@@ -14,6 +14,7 @@
     "title": "Projects",
     "empty": "No projects yet. Install the GitHub App to get started.",
     "installCta": "Install GitHub App",
+    "installSuccess": "GitHub App installed successfully. Your repositories will appear below.",
     "defaultBranch": "Default branch",
     "specialists": "Specialists",
     "threshold": "Severity threshold"

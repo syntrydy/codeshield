@@ -14,6 +14,7 @@
     "title": "Projets",
     "empty": "Aucun projet pour l'instant. Installez l'application GitHub pour commencer.",
     "installCta": "Installer l'application GitHub",
+    "installSuccess": "Application GitHub installée avec succès. Vos dépôts apparaîtront ci-dessous.",
     "defaultBranch": "Branche par défaut",
     "specialists": "Spécialistes",
     "threshold": "Seuil de sévérité"

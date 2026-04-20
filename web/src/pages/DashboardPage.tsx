@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { fetchProjects } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
@@ -7,6 +8,17 @@ import { useAuth } from "../hooks/useAuth";
 export function DashboardPage() {
   const { t } = useTranslation();
   const { signOut } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showInstallBanner, setShowInstallBanner] = useState(searchParams.get("installed") === "1");
+
+  useEffect(() => {
+    if (showInstallBanner) {
+      // Remove ?installed=1 from the URL without a page reload
+      setSearchParams({}, { replace: true });
+      const timer = setTimeout(() => setShowInstallBanner(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showInstallBanner, setSearchParams]);
 
   const { data: projects, isLoading, isError } = useQuery({
     queryKey: ["projects"],
@@ -26,6 +38,12 @@ export function DashboardPage() {
           </button>
         </div>
       </header>
+
+      {showInstallBanner && (
+        <div className="bg-green-50 border-b border-green-200 text-green-800 text-sm px-4 py-3 text-center">
+          {t("dashboard.installSuccess")}
+        </div>
+      )}
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between">
