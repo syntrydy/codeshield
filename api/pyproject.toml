@@ -1,0 +1,82 @@
+[project]
+name = "codeshield-api"
+version = "0.1.0"
+description = "CodeShield — AI code review agent backend"
+requires-python = ">=3.12"
+dependencies = [
+    # Web framework
+    "fastapi==0.115.12",
+    "uvicorn[standard]==0.34.2",
+    # Task queue
+    "celery[redis]==5.5.1",
+    # LangGraph / LangChain
+    "langgraph==0.4.1",
+    "langchain-anthropic==0.3.12",
+    "langchain-core==0.3.55",
+    "langsmith==0.3.42",
+    # Anthropic SDK (direct usage for rate-limit wrapper)
+    "anthropic==0.52.0",
+    # Data validation
+    "pydantic==2.11.3",
+    "pydantic-settings==2.9.1",
+    # Supabase
+    "supabase==2.15.2",
+    # GitHub App auth
+    "PyJWT[crypto]==2.10.1",
+    "httpx==0.28.1",
+    # Redis client (direct, for idempotency + token cache)
+    "redis==5.3.0",
+    # AWS SDK (S3 + Secrets Manager)
+    "boto3==1.38.6",
+    # Jinja2 for Check Run summary templates
+    "jinja2==3.1.6",
+    # Structured logging
+    "python-json-logger==3.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.5",
+    "pytest-asyncio==0.26.0",
+    "pytest-cov==6.1.0",
+    "httpx==0.28.1",
+    "mypy==1.15.0",
+    "ruff==0.11.7",
+    "types-redis==4.6.0.20241004",
+    "boto3-stubs[s3,secretsmanager]==1.38.6",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest==8.3.5",
+    "pytest-asyncio==0.26.0",
+    "pytest-cov==6.1.0",
+    "mypy==1.15.0",
+    "ruff==0.11.7",
+    "types-redis==4.6.0.20241004",
+    "boto3-stubs[s3,secretsmanager]==1.38.6",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
