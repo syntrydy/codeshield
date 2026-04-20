@@ -4,8 +4,6 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from langgraph.types import Send
-
 from app.graph.state import ReviewState
 
 logger = logging.getLogger(__name__)
@@ -26,13 +24,7 @@ def planner_node(state: ReviewState) -> dict[str, Any]:
         "skip_specialists": [],
     }
 
-    sends = [
-        Send("specialist", {**state, "plan": plan, "_specialist": specialist})
-        for specialist in state["enabled_specialists"]
-        if specialist not in plan["skip_specialists"]
-    ]
-
-    return {"plan": plan, "changed_files": [], "__send__": sends}
+    return {"plan": plan, "changed_files": []}
 
 
 def safe_specialist(specialist_name: str) -> Callable[[ReviewState], dict[str, Any]]:
