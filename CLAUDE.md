@@ -145,11 +145,18 @@ When working on these areas, open the current docs — do not rely on training-d
 
 Claude Code should update this section at the end of each working session with what was completed, what was attempted but didn't work, and what's next. Keep it honest.
 
-- **Day 1:** not started
-- **Day 2:** not started
-- **Day 3:** not started
-- **Day 4:** not started
-- **Day 5:** not started
-- **Day 6:** not started
-- **Day 7:** not started
-- **Day 8:** not started
+- **Day 1:** Complete. FastAPI app, pydantic-settings config, `current_user_id` JWT auth dependency, GitHub App token minting with Redis cache, webhook HMAC verification, Supabase schema migration (7 tables, RLS, indexes).
+
+- **Day 2:** Complete. Full GitHub webhook handler (HMAC → idempotency → project lookup → run insert → Celery dispatch). Installation callback (`/integrations/github/install-callback`) upserts installations and projects. Webhook tests cover 202, idempotency, bad signature, and installation events.
+
+- **Day 3:** Complete. LangGraph review pipeline: `ReviewState` TypedDict with `Annotated[list, add]` reducers for parallel fan-out safety, planner node, `safe_specialist` factory with full error isolation, aggregator stub, `_route_to_specialists` conditional edge emitting `Send(f"specialist_{s}", state)` per enabled specialist. Graph compiles and all nodes tested.
+
+- **Day 4:** Complete. Celery task (`review_pr`) wrapping full graph invocation. FastAPI routes: `GET/PATCH /projects`, `GET /projects/{id}/runs`, `GET /runs/{id}` (with findings + events). LangSmith prompt Hub integration with `@lru_cache` and bundled fallbacks. All 33 API + graph tests passing.
+
+- **Day 5:** Complete. React frontend: `AuthContext` + `useAuth` (Supabase GitHub OAuth), `ProtectedRoute`, `SignInPage`, `DashboardPage`, `RunsPage`, `RunDetailPage`, `App.tsx` router wiring. TanStack Query client, typed `apiFetch` helpers. Full i18n key set in `en.json` and `fr.json`. TypeScript strict mode, Vite production build passing.
+
+- **Day 6:** Complete. GitHub Check Run lifecycle (queued → in_progress → completed/failure) via `create_check_run` / `update_check_run` helpers with annotation pagination. Token accumulator fields (`total_input_tokens`, `total_output_tokens`) added to `ReviewState` with `add` reducers. Cost estimation in task. `conftest.py` stub env vars fix pre-existing test isolation issue (all 41 tests pass). `useRunEvents` Supabase Realtime hook in `RunDetailPage` for live event streaming.
+
+- **Day 7:** Complete. `web/Dockerfile` (nginx multi-stage) + `nginx.conf` (SPA fallback). `docker-compose.yml` updated with Vite dev web service. `buildspec/build-deploy.yml` implemented (ECR push + ECS rolling deploy + smoke test). `buildspec/terraform.yml` implemented (plan on PR, apply on main). Two eval fixtures (SQL injection, null dereference). `evals/run.py` runner with recall/precision/FP/verdict scoring and CI gates. Terraform skeleton: `main.tf`, `variables.tf`, `outputs.tf`, 6 modules (VPC, ECR, Redis, ALB, ECS, Secrets, S3) — `terraform validate` passes.
+
+- **Day 8:** Complete. Makefile expanded (eval, lint, type-check, infra targets). `scripts/register-app.sh` for one-time GitHub App registration. All pre-existing ruff lint errors fixed (41 tests still passing). Install success banner on DashboardPage (`?installed=1`). README expanded with GitHub App setup, CI/CD wiring, infra, eval, and project structure sections. Duplicate root-level buildspec files removed.
