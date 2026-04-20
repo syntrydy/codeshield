@@ -1,0 +1,43 @@
+id: pr_002_null_deref
+description: >
+  PR that adds a function which accesses an attribute of a value that can be None,
+  without a null check. The caller passes the return value of a function that may return None.
+  Ground truth for the Correctness specialist.
+
+pr_url: https://github.com/codeshield-eval/fixtures/pull/2
+pr_head_sha: "fixture-sha-002"
+pr_base_sha: "fixture-sha-000"
+locale: en
+enabled_specialists: [security, correctness, performance, style]
+
+changed_files:
+  - path: services/order.py
+    content: |
+      from typing import Optional
+
+      def find_order(order_id: int) -> Optional[dict]:
+          """Returns the order dict or None if not found."""
+          orders = {1: {"id": 1, "total": 99.99, "user_id": 42}}
+          return orders.get(order_id)
+
+      def get_order_total(order_id: int) -> float:
+          order = find_order(order_id)
+          # Bug: order can be None; accessing .get() on None raises AttributeError
+          return order.get("total", 0.0)
+
+expected_findings:
+  - specialist: correctness
+    file: services/order.py
+    line_range: [10, 11]
+    description: >
+      `find_order` can return None when the order_id is not found.
+      `order.get("total", 0.0)` will raise AttributeError at runtime for unknown IDs.
+      The function must guard against the None case before attribute access.
+    severity: high
+
+negative_findings:
+  - description: >
+      Flagging the use of Optional[dict] as a type annotation issue is a false positive —
+      the annotation is correct and intentional.
+
+expected_verdict: request_changes
