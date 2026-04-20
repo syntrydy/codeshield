@@ -1,7 +1,8 @@
-"""GitHub App authentication: JWT signing, installation token minting, and Redis caching."""
+"""GitHub App authentication: JWT signing, installation token minting, Check Run helpers."""
 
 import logging
 import time
+from typing import Any
 
 import httpx
 import jwt
@@ -13,6 +14,18 @@ logger = logging.getLogger(__name__)
 
 _TOKEN_TTL_SECONDS = 55 * 60  # GitHub tokens live 60 min; refresh with a 5-min buffer
 _REDIS_KEY_PREFIX = "gh:token:"
+_GH_API = "https://api.github.com"
+_GH_ACCEPT = "application/vnd.github+json"
+_GH_VERSION = "2022-11-28"
+_MAX_ANNOTATIONS_PER_REQUEST = 50
+
+_SEVERITY_TO_LEVEL = {
+    "critical": "failure",
+    "high": "failure",
+    "medium": "warning",
+    "low": "notice",
+    "info": "notice",
+}
 
 
 def _load_private_key() -> str:
@@ -57,7 +70,7 @@ def get_installation_token(installation_id: int) -> str:
 
     cached = redis.get(cache_key)
     if cached:
-        return cached  # type: ignore[return-value]
+        return cached.decode() if isinstance(cached, bytes) else str(cached)
 
     app_jwt = _make_app_jwt()
     url = f"https://api.github.com/app/installations/{installation_id}/access_tokens"
@@ -76,3 +89,125 @@ def get_installation_token(installation_id: int) -> str:
     redis.setex(cache_key, _TOKEN_TTL_SECONDS, token)
     logger.info("Minted new installation token", extra={"installation_id": installation_id})
     return token
+
+
+def _installation_headers(token: str) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {token}",
+        "Accept": _GH_ACCEPT,
+        "X-GitHub-Api-Version": _GH_VERSION,
+    }
+
+
+def create_check_run(
+    *,
+    installation_id: int,
+    repo_full_name: str,
+    head_sha: str,
+    run_id: str,
+) -> int:
+    """Create a queued Check Run on GitHub and return its ID."""
+    token = get_installation_token(installation_id)
+    url = f"{_GH_API}/repos/{repo_full_name}/check-runs"
+    with httpx.Client(timeout=15.0) as client:
+        resp = client.post(
+            url,
+            headers=_installation_headers(token),
+            json={
+                "name": "AI Code Review",
+                "head_sha": head_sha,
+                "status": "queued",
+                "external_id": run_id,
+            },
+        )
+    resp.raise_for_status()
+    check_run_id: int = resp.json()["id"]
+    logger.info(
+        "Created Check Run",
+        extra={"run_id": run_id, "check_run_id": check_run_id, "repo": repo_full_name},
+    )
+    return check_run_id
+
+
+def update_check_run(
+    *,
+    installation_id: int,
+    repo_full_name: str,
+    check_run_id: int,
+    status: str,
+    conclusion: str | None = None,
+    title: str | None = None,
+    summary: str | None = None,
+    annotations: list[dict[str, Any]] | None = None,
+) -> None:
+    """Update an existing Check Run. Paginates annotations 50 at a time."""
+    token = get_installation_token(installation_id)
+    url = f"{_GH_API}/repos/{repo_full_name}/check-runs/{check_run_id}"
+
+    payload: dict[str, Any] = {"status": status}
+    if conclusion:
+        payload["conclusion"] = conclusion
+    if title or summary:
+        payload["output"] = {
+            "title": title or "AI Code Review",
+            "summary": summary or "",
+            "annotations": (annotations or [])[:_MAX_ANNOTATIONS_PER_REQUEST],
+        }
+
+    with httpx.Client(timeout=15.0) as client:
+        client.patch(url, headers=_installation_headers(token), json=payload).raise_for_status()
+
+        # Paginate remaining annotations
+        remaining = (annotations or [])[_MAX_ANNOTATIONS_PER_REQUEST:]
+        offset = _MAX_ANNOTATIONS_PER_REQUEST
+        while remaining:
+            batch = remaining[:_MAX_ANNOTATIONS_PER_REQUEST]
+            client.patch(
+                url,
+                headers=_installation_headers(token),
+                json={"output": {"title": title or "AI Code Review", "summary": "", "annotations": batch}},
+            ).raise_for_status()
+            remaining = remaining[_MAX_ANNOTATIONS_PER_REQUEST:]
+            offset += _MAX_ANNOTATIONS_PER_REQUEST
+
+    logger.info(
+        "Updated Check Run",
+        extra={"check_run_id": check_run_id, "status": status, "conclusion": conclusion},
+    )
+
+
+def findings_to_annotations(
+    findings: list[dict[str, Any]],
+    severity_threshold: str,
+) -> list[dict[str, Any]]:
+    """Convert findings to GitHub Check Run annotation dicts, filtering below threshold."""
+    order = ["info", "low", "medium", "high", "critical"]
+    threshold_idx = order.index(severity_threshold) if severity_threshold in order else 0
+
+    annotations = []
+    for f in findings:
+        severity = f.get("severity", "low")
+        if order.index(severity) < threshold_idx:
+            continue
+        if not f.get("file_path") or f.get("line_start") is None:
+            continue
+        annotations.append({
+            "path": f["file_path"],
+            "start_line": f["line_start"],
+            "end_line": f.get("line_end") or f["line_start"],
+            "annotation_level": _SEVERITY_TO_LEVEL.get(severity, "notice"),
+            "title": f.get("title", "Finding"),
+            "message": f.get("explanation", ""),
+            "raw_details": f.get("suggested_fix") or "",
+        })
+    return annotations
+
+
+def map_verdict_to_conclusion(findings: list[dict[str, Any]]) -> str:
+    """Map the worst finding severity to a GitHub Check Run conclusion."""
+    severities = {f.get("severity", "info") for f in findings}
+    if "critical" in severities or "high" in severities:
+        return "action_required"
+    if "medium" in severities:
+        return "neutral"
+    return "success"
