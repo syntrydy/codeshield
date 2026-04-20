@@ -4,7 +4,7 @@ An AI code review agent that performs automated, multi-specialist reviews on Git
 
 ## What it does
 
-A developer installs the GitHub App on a repository. Every opened or updated pull request triggers four parallel specialist agents — Security, Correctness, Performance, and Style — each backed by Anthropic Claude. Findings are aggregated and posted to GitHub as a Check Run with line-level annotations. A dashboard lets project owners view full agent traces, cost breakdowns, and historical runs.
+A developer installs the GitHub App on a repository. Every opened or updated pull request triggers four parallel specialist agents — Security, Correctness, Performance, and Style — each backed by Anthropic Claude. Findings are aggregated and posted to GitHub as a Check Run with line-level annotations. A dashboard lets project owners view full agent traces, cost breakdowns, and historical runs across all their connected repositories.
 
 ## Stack
 
@@ -20,55 +20,171 @@ A developer installs the GitHub App on a repository. Every opened or updated pul
 
 For the full architecture, data model, agent design, and v2 roadmap, see [DESIGN.md](./DESIGN.md).
 
-## Prerequisites
+---
+
+## Local development
+
+### Prerequisites
 
 - Docker and Docker Compose
-- `uv` — [install](https://docs.astral.sh/uv/getting-started/installation/)
+- [`uv`](https://docs.astral.sh/uv/getting-started/installation/) for Python package management
 - `pnpm` — `npm install -g pnpm`
-- `supabase` CLI — [install](https://supabase.com/docs/guides/cli)
+- [`supabase` CLI](https://supabase.com/docs/guides/cli)
 - A Supabase project (create at [supabase.com](https://supabase.com))
 - An Anthropic API key
 - A LangSmith account and API key
 
-## Setup
+### First-time setup
 
-1. Clone the repo and copy the environment template:
+1. **Clone and configure environment:**
 
    ```bash
+   git clone https://github.com/your-org/codeshield.git
+   cd codeshield
    cp .env.example .env
-   # Edit .env with your Supabase, Anthropic, and LangSmith credentials
+   # Fill in all values in .env
    ```
 
-2. Push the database schema to your Supabase project:
+2. **Push the database schema:**
 
    ```bash
    make db-push
    ```
 
-3. Start the local stack:
+3. **Start the full local stack** (API + worker + Redis + Vite dev server):
 
    ```bash
    make up
    ```
 
-4. In a separate terminal, start the frontend dev server:
+   Or to run the Vite dev server outside Docker (faster hot-reload):
 
    ```bash
-   make web-dev
+   make up          # starts api, worker, redis
+   make web-dev     # starts Vite in a separate terminal
    ```
 
-5. Visit `http://localhost:5173`.
+4. **Visit** `http://localhost:5173` — sign in with GitHub and install the App.
 
-## Running tests
+### Common commands
 
 ```bash
-make test
+make test          # run backend tests
+make lint          # ruff lint check
+make type-check    # mypy static type check
+make eval          # fast eval subset (3 fixtures — mirrors CI gate)
+make web-build     # production Vite build
+make logs          # tail all Docker service logs
+make db-push       # apply Supabase migrations
 ```
+
+---
 
 ## GitHub App setup
 
-See [DESIGN.md §8](./DESIGN.md) for the App registration steps. The one-time registration script is at `scripts/register-app.sh` (Day 2 work).
+### Register the App (one-time)
+
+```bash
+./scripts/register-app.sh
+# Or for a GitHub org:
+./scripts/register-app.sh --org your-org
+```
+
+This creates the App in your GitHub account and stores the private key and webhook secret in AWS Secrets Manager. After running it, add `GITHUB_APP_ID` and `GITHUB_APP_SLUG` to your `.env`.
+
+If `gh` CLI registration isn't available, the script prints step-by-step manual instructions.
+
+### Receive webhooks locally
+
+Use [smee.io](https://smee.io) to forward GitHub webhook events to your local API:
+
+```bash
+npm install -g smee-client
+smee --url https://smee.io/<your-channel> --target http://localhost:8000/webhooks/github
+```
+
+Point the webhook URL in your GitHub App settings to your smee.io channel.
+
+---
+
+## CI/CD
+
+Three AWS CodeBuild projects, triggered by GitHub webhooks:
+
+| Project | Trigger | Action |
+|---|---|---|
+| `test` | Any push or PR | `ruff` + `mypy` + `pytest` + fast eval |
+| `build-deploy` | Push to `main` | Build Docker images → ECR → ECS rolling deploy |
+| `terraform` | Push to `main` affecting `infra/**` | `terraform plan` on PRs, `terraform apply` on main |
+
+Buildspecs are in `buildspec/`. Required CodeBuild environment variables are documented at the top of each file.
+
+---
+
+## Infrastructure
+
+Terraform manages all AWS resources. State is stored in S3 with DynamoDB locking.
+
+```bash
+# Initialise (requires TF_STATE_BUCKET, TF_STATE_KEY, TF_LOCK_TABLE, AWS_REGION)
+make infra-init
+
+# Preview changes
+make infra-plan
+
+# Apply changes
+make infra-apply
+```
+
+Modules: `vpc`, `ecr`, `redis`, `alb`, `ecs`, `secrets`, `s3`. See `infra/` for details.
+
+---
+
+## Evals
+
+The eval suite measures review quality against a curated dataset of labeled PRs.
+
+```bash
+make eval           # fast subset (3 fixtures) — same gate as CI
+make eval-full      # full dataset
+```
+
+Results are written to `evals/results.json`. The CI gate fails if recall drops below 60% or false-positive rate exceeds 30%.
+
+Dataset format and metrics are documented in [evals/README.md](./evals/README.md).
+
+---
+
+## Project structure
+
+```
+api/            Python backend (FastAPI + Celery + LangGraph)
+  app/
+    core/       config, auth, supabase clients, github app, logging
+    api/        FastAPI routes (projects, runs, integrations, health)
+    webhooks/   GitHub webhook handler
+    graph/      LangGraph state, nodes, graph assembly
+    worker/     Celery app + review task
+  tests/
+evals/          Eval dataset, runner, and results
+  dataset/      YAML-labeled PR fixtures
+infra/          Terraform (root config + modules)
+buildspec/      CodeBuild YAMLs (test, build-deploy, terraform)
+scripts/        Operational scripts (register-app.sh)
+supabase/       migrations/, config.toml
+web/            React + TypeScript + shadcn frontend
+  src/
+    contexts/   AuthContext
+    hooks/      useAuth, useRunEvents
+    pages/      SignIn, Dashboard, Runs, RunDetail
+    lib/        api fetch helpers, queryClient, supabase client
+    i18n/       en.json, fr.json
+CLAUDE.md       AI assistant instructions (session constitution)
+DESIGN.md       Full architecture and design document
+```
+
+---
 
 ## v2 roadmap
 
-See [DESIGN.md §20.2](./DESIGN.md) for the full roadmap: PR comment posting, team accounts, cost budgets, staging environments, and more.
+See [DESIGN.md §20.2](./DESIGN.md) for the full roadmap: PR comment posting, team accounts, cost budgets per user, staging environment, model-provider fallback, and more.
