@@ -71,6 +71,48 @@ def mock_redis():  # type: ignore[no-untyped-def]
         yield FakeRedis()
 
 
+@pytest.fixture
+def mock_supabase():  # type: ignore[no-untyped-def]
+    """Fake Supabase service client that returns a stub project row."""
+
+    class FakeQuery:
+        def __init__(self, data: object = None) -> None:
+            self._data = data
+
+        def select(self, *_: object, **__: object) -> "FakeQuery":
+            return self
+
+        def insert(self, *_: object, **__: object) -> "FakeQuery":
+            return self
+
+        def eq(self, *_: object, **__: object) -> "FakeQuery":
+            return self
+
+        def maybe_single(self) -> "FakeQuery":
+            return self
+
+        def execute(self) -> "FakeQuery":
+            return self
+
+        @property
+        def data(self) -> object:
+            return self._data
+
+    class FakeClient:
+        def table(self, _name: str) -> FakeQuery:
+            if _name == "projects":
+                return FakeQuery(data={
+                    "id": "proj-1",
+                    "user_id": "user-1",
+                    "review_output_locale": "en",
+                    "enabled_specialists": ["security", "style"],
+                })
+            return FakeQuery(data=[{"id": "run-1"}])
+
+    with patch("app.webhooks.github.get_service_client", return_value=FakeClient()):
+        yield FakeClient()
+
+
 @pytest.fixture(autouse=True)
 def mock_celery_dispatch():  # type: ignore[no-untyped-def]
     """Prevent all tests in this module from hitting the real Celery broker."""
@@ -79,7 +121,7 @@ def mock_celery_dispatch():  # type: ignore[no-untyped-def]
 
 
 @pytest.mark.anyio
-async def test_valid_pr_opened_returns_202(mock_settings, mock_redis) -> None:  # type: ignore[no-untyped-def]
+async def test_valid_pr_opened_returns_202(mock_settings, mock_redis, mock_supabase) -> None:  # type: ignore[no-untyped-def]
     body = json.dumps(_PR_PAYLOAD).encode()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post("/webhooks/github", content=body, headers=_headers(body))
@@ -87,7 +129,7 @@ async def test_valid_pr_opened_returns_202(mock_settings, mock_redis) -> None:  
 
 
 @pytest.mark.anyio
-async def test_duplicate_delivery_returns_200(mock_settings, mock_redis) -> None:  # type: ignore[no-untyped-def]
+async def test_duplicate_delivery_returns_200(mock_settings, mock_redis, mock_supabase) -> None:  # type: ignore[no-untyped-def]
     body = json.dumps(_PR_PAYLOAD).encode()
     headers = _headers(body)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
