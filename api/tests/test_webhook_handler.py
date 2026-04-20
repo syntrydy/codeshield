@@ -71,6 +71,13 @@ def mock_redis():  # type: ignore[no-untyped-def]
         yield FakeRedis()
 
 
+@pytest.fixture(autouse=True)
+def mock_celery_dispatch():  # type: ignore[no-untyped-def]
+    """Prevent all tests in this module from hitting the real Celery broker."""
+    with patch("app.worker.tasks.review_pr.delay") as mock_delay:
+        yield mock_delay
+
+
 @pytest.mark.anyio
 async def test_valid_pr_opened_returns_202(mock_settings, mock_redis) -> None:  # type: ignore[no-untyped-def]
     body = json.dumps(_PR_PAYLOAD).encode()

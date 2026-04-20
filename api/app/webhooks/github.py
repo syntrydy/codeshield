@@ -23,12 +23,22 @@ def _mark_seen(delivery_id: str) -> bool:
 
 
 def _dispatch_review(payload: dict) -> None:  # type: ignore[type-arg]
-    """Enqueue a review task on Celery.
+    """Enqueue a review task on Celery."""
+    from app.worker.tasks import review_pr  # local import avoids circular dependency at module load
 
-    The real Celery task is wired on Day 3. This stub raises NotImplementedError so
-    tests can assert the dispatch path is reached without needing a broker.
-    """
-    raise NotImplementedError("Celery task not yet wired — Day 3 work")
+    pr = payload["pull_request"]
+    repo = payload["repository"]
+    pr_url = f"https://github.com/{repo['full_name']}/pull/{pr['number']}"
+
+    review_pr.delay(
+        run_id="",          # populated after DB row created — wired fully in Day 4
+        project_id="",      # populated after DB lookup — wired fully in Day 4
+        pr_url=pr_url,
+        pr_head_sha=pr["head"]["sha"],
+        pr_base_sha=pr["base"]["sha"],
+        locale="en",        # populated from project settings in Day 4
+        enabled_specialists=["security", "correctness", "performance", "style"],
+    )
 
 
 @router.post("/github")
