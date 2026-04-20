@@ -1,10 +1,59 @@
 # buildspec/build-deploy.yml
-# Trigger: push to main
-# Builds Docker images for api and worker, pushes to ECR,
-# and triggers a rolling ECS deploy for both services.
-# TODO: implement on Day 7 (infra/deployment session)
+# Trigger: push to main (CodeBuild project: build-deploy)
+# Builds api and web Docker images, pushes to ECR, triggers ECS rolling deploy.
+#
+# Required CodeBuild environment variables (set in the project, not here):
+#   AWS_ACCOUNT_ID, AWS_REGION, ECR_REPO_API, ECR_REPO_WEB,
+#   ECS_CLUSTER, ECS_SERVICE_API, ECS_SERVICE_WORKER
 version: 0.2
+
+env:
+  variables:
+    IMAGE_TAG: $CODEBUILD_RESOLVED_SOURCE_VERSION
+
 phases:
+  pre_build:
+    commands:
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      - API_REPO=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_API
+      - WEB_REPO=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_WEB
+
   build:
     commands:
-      - echo "build-deploy not yet implemented"
+      # Build API image (shared by both api and worker services)
+      - echo "Building API image..."
+      - docker build -t $API_REPO:$IMAGE_TAG -t $API_REPO:latest ./api
+      # Build Web image
+      - echo "Building Web image..."
+      - docker build
+          --build-arg VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+          --build-arg VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+          --build-arg VITE_API_BASE_URL=$VITE_API_BASE_URL
+          --build-arg VITE_GITHUB_APP_SLUG=$VITE_GITHUB_APP_SLUG
+          -t $WEB_REPO:$IMAGE_TAG -t $WEB_REPO:latest ./web
+
+  post_build:
+    commands:
+      - echo "Pushing images to ECR..."
+      - docker push $API_REPO:$IMAGE_TAG
+      - docker push $API_REPO:latest
+      - docker push $WEB_REPO:$IMAGE_TAG
+      - docker push $WEB_REPO:latest
+
+      - echo "Triggering ECS rolling deploys..."
+      - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE_API    --force-new-deployment --region $AWS_REGION
+      - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE_WORKER --force-new-deployment --region $AWS_REGION
+
+      - echo "Waiting for API service stability (up to 10 min)..."
+      - aws ecs wait services-stable --cluster $ECS_CLUSTER --services $ECS_SERVICE_API --region $AWS_REGION
+
+      - echo "Smoke test — health endpoint..."
+      - curl --fail --retry 5 --retry-delay 5 $API_HEALTH_URL/health
+
+      - echo "Deploy complete."
+
+artifacts:
+  files:
+    - "**/*"
+  base-directory: .
