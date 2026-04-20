@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { fetchRun } from "../lib/api";
+import { useRunEvents } from "../hooks/useRunEvents";
 
 export function RunDetailPage() {
   const { runId } = useParams<{ runId: string }>();
@@ -12,6 +13,8 @@ export function RunDetailPage() {
     queryFn: () => fetchRun(runId!),
     enabled: !!runId,
   });
+
+  const liveEvents = useRunEvents(runId, run?.events);
 
   if (isLoading) {
     return (
@@ -84,11 +87,11 @@ export function RunDetailPage() {
 
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">{t("runDetail.events")}</h2>
-          {run.events.length === 0 ? (
+          {liveEvents.length === 0 ? (
             <p className="text-muted-foreground">{t("runDetail.noEvents")}</p>
           ) : (
             <div className="rounded-lg border divide-y">
-              {run.events.map((ev) => (
+              {liveEvents.map((ev) => (
                 <div key={ev.id} className="px-4 py-3 flex items-start gap-4">
                   <span className="font-mono text-xs text-muted-foreground whitespace-nowrap pt-0.5">
                     {new Date(ev.created_at).toLocaleTimeString()}
