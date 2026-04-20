@@ -1,0 +1,40 @@
+id: pr_001_sql_injection
+description: >
+  PR that introduces a SQL injection vulnerability by concatenating unsanitized user input
+  directly into a raw query string. Based on a pattern from real CVE fixes in Django apps.
+  Ground truth for the Security specialist.
+
+pr_url: https://github.com/codeshield-eval/fixtures/pull/1
+pr_head_sha: "fixture-sha-001"
+pr_base_sha: "fixture-sha-000"
+locale: en
+enabled_specialists: [security, correctness, performance, style]
+
+changed_files:
+  - path: api/users.py
+    content: |
+      import sqlite3
+
+      def get_user_by_name(db_path: str, username: str):
+          conn = sqlite3.connect(db_path)
+          cursor = conn.cursor()
+          # Vulnerable: user input concatenated directly into query
+          query = "SELECT * FROM users WHERE username = '" + username + "'"
+          cursor.execute(query)
+          return cursor.fetchone()
+
+expected_findings:
+  - specialist: security
+    file: api/users.py
+    line_range: [6, 7]
+    description: >
+      SQL injection: user-controlled `username` is concatenated directly into the query string.
+      An attacker can escape the string literal and inject arbitrary SQL.
+    severity: critical
+
+negative_findings:
+  - description: >
+      Flagging the sqlite3 import itself as a vulnerability is a false positive —
+      the library is not the problem, the usage pattern is.
+
+expected_verdict: request_changes
