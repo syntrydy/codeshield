@@ -1,5 +1,59 @@
 {
   "app": {
     "name": "CodeShield"
+  },
+  "signIn": {
+    "title": "Connexion à CodeShield",
+    "subtitle": "Revue de code alimentée par IA pour vos pull requests",
+    "button": "Se connecter avec GitHub"
+  },
+  "nav": {
+    "signOut": "Se déconnecter"
+  },
+  "dashboard": {
+    "title": "Projets",
+    "empty": "Aucun projet pour l'instant. Installez l'application GitHub pour commencer.",
+    "installCta": "Installer l'application GitHub",
+    "defaultBranch": "Branche par défaut",
+    "specialists": "Spécialistes",
+    "threshold": "Seuil de sévérité"
+  },
+  "runs": {
+    "title": "Exécutions",
+    "empty": "Aucune exécution pour ce projet.",
+    "pr": "PR",
+    "status": "Statut",
+    "created": "Créé le",
+    "cost": "Coût"
+  },
+  "runDetail": {
+    "title": "Détail de l'exécution",
+    "findings": "Résultats",
+    "events": "Événements",
+    "noFindings": "Aucun résultat.",
+    "noEvents": "Aucun événement.",
+    "file": "Fichier",
+    "severity": "Sévérité",
+    "confidence": "Confiance",
+    "specialist": "Spécialiste"
+  },
+  "severity": {
+    "critical": "Critique",
+    "high": "Élevé",
+    "medium": "Moyen",
+    "low": "Faible",
+    "info": "Info"
+  },
+  "status": {
+    "queued": "En attente",
+    "running": "En cours",
+    "completed": "Terminé",
+    "failed": "Échoué",
+    "cancelled": "Annulé"
+  },
+  "common": {
+    "loading": "Chargement…",
+    "error": "Une erreur s'est produite.",
+    "back": "Retour"
   }
 }

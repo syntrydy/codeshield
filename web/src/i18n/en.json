@@ -1,5 +1,59 @@
 {
   "app": {
     "name": "CodeShield"
+  },
+  "signIn": {
+    "title": "Sign in to CodeShield",
+    "subtitle": "AI-powered code review for your pull requests",
+    "button": "Sign in with GitHub"
+  },
+  "nav": {
+    "signOut": "Sign out"
+  },
+  "dashboard": {
+    "title": "Projects",
+    "empty": "No projects yet. Install the GitHub App to get started.",
+    "installCta": "Install GitHub App",
+    "defaultBranch": "Default branch",
+    "specialists": "Specialists",
+    "threshold": "Severity threshold"
+  },
+  "runs": {
+    "title": "Runs",
+    "empty": "No runs yet for this project.",
+    "pr": "PR",
+    "status": "Status",
+    "created": "Created",
+    "cost": "Cost"
+  },
+  "runDetail": {
+    "title": "Run detail",
+    "findings": "Findings",
+    "events": "Events",
+    "noFindings": "No findings.",
+    "noEvents": "No events.",
+    "file": "File",
+    "severity": "Severity",
+    "confidence": "Confidence",
+    "specialist": "Specialist"
+  },
+  "severity": {
+    "critical": "Critical",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low",
+    "info": "Info"
+  },
+  "status": {
+    "queued": "Queued",
+    "running": "Running",
+    "completed": "Completed",
+    "failed": "Failed",
+    "cancelled": "Cancelled"
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "Something went wrong.",
+    "back": "Back"
   }
 }
