@@ -1,0 +1,9 @@
+# buildspec/terraform.yml
+# Trigger: push to main affecting infra/**
+# Runs terraform plan on PRs (posts to PR), terraform apply on main.
+# TODO: implement on Day 7 (infra/deployment session)
+version: 0.2
+phases:
+  build:
+    commands:
+      - echo "terraform pipeline not yet implemented"

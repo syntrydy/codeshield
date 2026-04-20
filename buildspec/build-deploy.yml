@@ -1,0 +1,10 @@
+# buildspec/build-deploy.yml
+# Trigger: push to main
+# Builds Docker images for api and worker, pushes to ECR,
+# and triggers a rolling ECS deploy for both services.
+# TODO: implement on Day 7 (infra/deployment session)
+version: 0.2
+phases:
+  build:
+    commands:
+      - echo "build-deploy not yet implemented"

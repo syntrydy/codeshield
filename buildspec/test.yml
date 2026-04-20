@@ -1,0 +1,20 @@
+# buildspec/test.yml
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+      nodejs: 20
+    commands:
+      - curl -LsSf https://astral.sh/uv/install.sh | sh
+      - export PATH="$HOME/.local/bin:$PATH"
+      - npm install -g pnpm
+  pre_build:
+    commands:
+      - cd api && uv sync
+      - cd ../web && pnpm install --frozen-lockfile
+  build:
+    commands:
+      - cd api && uv run ruff check . && uv run mypy app && uv run pytest -xvs
+      - cd ../web && pnpm lint && pnpm build
+      - cd ../api && uv run python -m evals.run --subset=fast
