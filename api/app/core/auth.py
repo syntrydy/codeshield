@@ -14,7 +14,7 @@ _bearer = HTTPBearer()
 
 
 def current_user_id(
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),  # noqa: B008
 ) -> str:
     """Decode the Supabase JWT and return the authenticated user's UUID.
 
@@ -29,11 +29,11 @@ def current_user_id(
             algorithms=["HS256"],
             options={"require": ["sub", "exp"]},
         )
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
+    except jwt.ExpiredSignatureError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired") from exc
     except jwt.InvalidTokenError as exc:
         logger.warning("JWT validation failed: %s", exc)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
 
     user_id: str = payload["sub"]
     return user_id

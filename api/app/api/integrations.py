@@ -7,8 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 
 from app.core.auth import current_user_id
-from app.core.config import get_settings
-from app.core.github import get_installation_token, _make_app_jwt
+from app.core.github import _make_app_jwt, get_installation_token
 from app.core.supabase import get_service_client
 
 logger = logging.getLogger(__name__)
@@ -33,7 +32,6 @@ def github_install_callback(
       4. Upsert each repo into projects with default settings.
       5. Redirect to dashboard.
     """
-    settings = get_settings()
     client = get_service_client()
 
     # 1. Fetch installation metadata from GitHub
@@ -58,7 +56,7 @@ def github_install_callback(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Failed to fetch installation from GitHub",
-        )
+        ) from exc
 
     account = install_data["account"]
 
@@ -99,7 +97,7 @@ def github_install_callback(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Failed to fetch repositories from GitHub",
-        )
+        ) from exc
 
     # 4. Upsert each repository as a project
     for repo in repos:
@@ -127,5 +125,4 @@ def github_install_callback(
     )
 
     # 5. Redirect to dashboard
-    frontend_url = settings.api_host  # placeholder — real frontend URL added when env var exists
     return RedirectResponse(url="/dashboard?installed=1", status_code=status.HTTP_302_FOUND)
