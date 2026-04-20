@@ -1,0 +1,23 @@
+# Root-level .dockerignore (applies to docker compose build context)
+.git/
+.github/
+.vscode/
+.idea/
+*.md
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+infra/
+evals/
+web/node_modules/
+web/dist/
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.uv/
