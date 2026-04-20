@@ -7,6 +7,7 @@ from fastapi import FastAPI
 
 from app.api.health import router as health_router
 from app.core.logging import configure_logging
+from app.webhooks.github import router as webhook_router
 
 
 @asynccontextmanager
@@ -18,6 +19,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     app = FastAPI(title="CodeShield API", lifespan=lifespan)
     app.include_router(health_router)
+    app.include_router(webhook_router, prefix="/webhooks")
     return app
 
 
