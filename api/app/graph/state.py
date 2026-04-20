@@ -24,5 +24,9 @@ class ReviewState(TypedDict):
     findings: Annotated[list[dict], add]
     specialist_errors: Annotated[list[dict], add]
 
+    # ── Token accumulators — int + add reducer sums across parallel branches ──
+    total_input_tokens: Annotated[int, add]
+    total_output_tokens: Annotated[int, add]
+
     # ── Aggregator output ─────────────────────────────────────────────────────
     final_review: dict | None  # {summary, findings_by_severity, verdict}

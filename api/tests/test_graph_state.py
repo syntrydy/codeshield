@@ -11,6 +11,7 @@ def test_all_required_keys_present() -> None:
         "run_id", "project_id", "pr_url", "pr_head_sha", "pr_base_sha",
         "locale", "enabled_specialists", "plan", "changed_files",
         "findings", "specialist_errors", "final_review",
+        "total_input_tokens", "total_output_tokens",
     }
     assert set(ReviewState.__annotations__) == expected_keys
 
@@ -48,6 +49,7 @@ def test_state_construction() -> None:
         "plan": None, "changed_files": [],
         "findings": [], "specialist_errors": [],
         "final_review": None,
+        "total_input_tokens": 0, "total_output_tokens": 0,
     }
     assert state["locale"] == "en"
     assert state["findings"] == []

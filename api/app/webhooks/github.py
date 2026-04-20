@@ -49,9 +49,15 @@ def _dispatch_review(project: dict, run_id: str, payload: dict) -> None:  # type
     repo = payload["repository"]
     pr_url = f"https://github.com/{repo['full_name']}/pull/{pr['number']}"
 
+    # Supabase returns the joined installation row as a nested dict
+    installation = project.get("github_app_installations") or {}
+    installation_id: int | None = installation.get("installation_id") if isinstance(installation, dict) else None
+
     review_pr.delay(
         run_id=run_id,
         project_id=project["id"],
+        installation_id=installation_id,
+        repo_full_name=repo["full_name"],
         pr_url=pr_url,
         pr_head_sha=pr["head"]["sha"],
         pr_base_sha=pr["base"]["sha"],
@@ -116,7 +122,7 @@ def _handle_pull_request(payload: dict, delivery_id: str) -> None:  # type: igno
     resp = (
         get_service_client()
         .table("projects")
-        .select("id, user_id, review_output_locale, enabled_specialists")
+        .select("id, user_id, review_output_locale, enabled_specialists, github_app_installations(installation_id)")
         .eq("github_repo_full_name", repo_full_name)
         .maybe_single()
         .execute()

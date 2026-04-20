@@ -67,12 +67,19 @@ def _run_specialist(specialist_name: str, state: ReviewState) -> dict[str, Any]:
     """Execute one specialist's ReAct loop against the PR.
 
     Stub implementation — real LLM + tool loop added in Day 4.
+    Token accumulators are returned even from the stub so the reducer sums them correctly
+    across parallel branches.
     """
     logger.info(
         "Specialist completed (stub — no findings yet)",
         extra={"run_id": state["run_id"], "specialist": specialist_name},
     )
-    return {"findings": [], "specialist_errors": []}
+    return {
+        "findings": [],
+        "specialist_errors": [],
+        "total_input_tokens": 0,
+        "total_output_tokens": 0,
+    }
 
 
 def aggregator_node(state: ReviewState) -> dict[str, Any]:
