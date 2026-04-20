@@ -1,0 +1,4 @@
+-- Initial schema migration — placeholder only.
+-- Real table definitions (github_app_installations, projects, runs,
+-- run_events, findings, webhook_deliveries, user_preferences) come in
+-- the next session per DESIGN.md §4.
