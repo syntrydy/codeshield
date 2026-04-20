@@ -17,4 +17,4 @@ phases:
     commands:
       - cd api && uv run ruff check . && uv run mypy app && uv run pytest -xvs
       - cd ../web && pnpm lint && pnpm build
-      - cd ../api && uv run python -m evals.run --subset=fast
+      - cd .. && PYTHONPATH=api uv --project api run python -m evals.run --subset=fast

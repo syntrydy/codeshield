@@ -1,0 +1,43 @@
+{
+  "summary": {
+    "avg_recall": 0.0,
+    "avg_precision": 1.0,
+    "avg_fp_rate": 0.0,
+    "verdict_accuracy": 0.0,
+    "total_cost_usd": 0
+  },
+  "fixtures": [
+    {
+      "fixture_id": "pr_001_sql_injection",
+      "recall": 0.0,
+      "precision": 1.0,
+      "fp_rate": 0.0,
+      "verdict_correct": false,
+      "expected_verdict": "request_changes",
+      "produced_verdict": "approve",
+      "total_findings": 0,
+      "matched_expected": 0,
+      "total_expected": 1,
+      "cost_usd": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "latency_s": 0.28
+    },
+    {
+      "fixture_id": "pr_002_null_deref",
+      "recall": 0.0,
+      "precision": 1.0,
+      "fp_rate": 0.0,
+      "verdict_correct": false,
+      "expected_verdict": "request_changes",
+      "produced_verdict": "approve",
+      "total_findings": 0,
+      "matched_expected": 0,
+      "total_expected": 1,
+      "cost_usd": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "latency_s": 0.0
+    }
+  ]
+}
