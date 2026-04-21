@@ -22,7 +22,8 @@
     "breadcrumb": "Overview / Dashboard",
     "searchPlaceholder": "Search resources...",
     "nav": {
-      "projects": "Home",
+      "home": "Home",
+      "projects": "Projects",
       "pullRequests": "Pull Requests",
       "settings": "Settings",
       "docs": "Docs",

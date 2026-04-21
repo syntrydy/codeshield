@@ -89,11 +89,11 @@ export function DashboardPage() {
             className="flex items-center gap-3 h-10 text-zinc-950 font-bold border-l-2 border-zinc-950 pl-4 bg-zinc-50"
           >
             <span className="material-symbols-outlined text-[20px]">home</span>
-            <span className="text-sm tracking-tight">{t("dashboard.nav.projects")}</span>
+            <span className="text-sm tracking-tight">{t("dashboard.nav.home")}</span>
           </Link>
           <a className="flex items-center gap-3 h-10 text-zinc-500 pl-4 hover:text-zinc-950 hover:bg-zinc-50 transition-colors cursor-not-allowed opacity-50">
-            <span className="material-symbols-outlined text-[20px]">merge_type</span>
-            <span className="text-sm tracking-tight">{t("dashboard.nav.pullRequests")}</span>
+            <span className="material-symbols-outlined text-[20px]">folder</span>
+            <span className="text-sm tracking-tight">{t("dashboard.nav.projects")}</span>
           </a>
           <a className="flex items-center gap-3 h-10 text-zinc-500 pl-4 hover:text-zinc-950 hover:bg-zinc-50 transition-colors cursor-not-allowed opacity-50">
             <span className="material-symbols-outlined text-[20px]">settings</span>

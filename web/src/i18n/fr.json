@@ -22,7 +22,8 @@
     "breadcrumb": "Vue d'ensemble / Tableau de bord",
     "searchPlaceholder": "Rechercher des ressources...",
     "nav": {
-      "projects": "Accueil",
+      "home": "Accueil",
+      "projects": "Projets",
       "pullRequests": "Pull Requests",
       "settings": "Paramètres",
       "docs": "Documentation",
