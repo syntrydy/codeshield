@@ -100,10 +100,6 @@ export function DashboardPage() {
             <span className="material-symbols-outlined text-[20px]">settings</span>
             <span className="text-sm tracking-tight">{t("dashboard.nav.settings")}</span>
           </a>
-          <a className="flex items-center gap-3 h-10 text-zinc-500 pl-4 hover:text-zinc-950 hover:bg-zinc-50 transition-colors">
-            <span className="material-symbols-outlined text-[20px]">description</span>
-            <span className="text-sm tracking-tight">{t("dashboard.nav.docs")}</span>
-          </a>
         </nav>
 
         <div className="px-2 pt-4 mt-4 border-t border-zinc-100 space-y-1">
