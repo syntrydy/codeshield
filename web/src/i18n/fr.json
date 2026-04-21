@@ -61,7 +61,7 @@
     "navHowItWorks": "Fonctionnement",
     "navPricing": "Tarifs",
     "navDocs": "Documentation",
-    "navInstall": "Installer sur GitHub",
+    "navInstall": "Essayer maintenant",
     "heroHeadline": "La revue de code automatisée qui lit vos pull requests comme un ingénieur senior.",
     "heroSubtext": "CodeShield s'intègre directement dans votre workflow GitHub pour fournir des analyses techniques approfondies, détecter les failles de sécurité et optimiser les performances avant chaque merge.",
     "heroCtaPrimary": "Commencer gratuitement",
