@@ -106,6 +106,36 @@
     "failed": "Échoué",
     "cancelled": "Annulé"
   },
+  "settings": {
+    "title": "Paramètres",
+    "breadcrumb": "Vue d'ensemble / Paramètres",
+    "noProjects": "Aucun dépôt connecté. Installez d'abord l'application GitHub.",
+    "project": {
+      "specialists": "Spécialistes actifs",
+      "threshold": "Seuil de sévérité",
+      "locale": "Langue de sortie des revues",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "saved": "Enregistré"
+    },
+    "specialists": {
+      "security": "Sécurité",
+      "correctness": "Exactitude",
+      "performance": "Performance",
+      "style": "Style"
+    },
+    "threshold": {
+      "critical": "Critique uniquement",
+      "high": "Élevé et plus",
+      "medium": "Moyen et plus",
+      "low": "Faible et plus",
+      "info": "Tous les résultats"
+    },
+    "locale": {
+      "en": "English",
+      "fr": "Français"
+    }
+  },
   "common": {
     "loading": "Chargement…",
     "error": "Une erreur s'est produite.",

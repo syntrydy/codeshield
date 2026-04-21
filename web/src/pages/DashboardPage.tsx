@@ -3,13 +3,12 @@ import { useQuery, useQueries } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { fetchProjects, fetchRuns, type Project, type Run } from "../lib/api";
-import { useAuth } from "../hooks/useAuth";
+import { AppLayout } from "../components/AppLayout";
 
 type RunWithProject = Run & { project: Project };
 
 export function DashboardPage() {
   const { t } = useTranslation();
-  const { signOut, session } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showInstallBanner, setShowInstallBanner] = useState(searchParams.get("installed") === "1");
 
@@ -57,119 +56,34 @@ export function DashboardPage() {
     return { project: p, lastRun };
   });
 
-  const avatarUrl = session?.user?.user_metadata?.["avatar_url"] as string | undefined;
   const installUrl = `https://github.com/apps/${import.meta.env.VITE_GITHUB_APP_SLUG}/installations/new`;
   const latestProject = healthProjects[0]?.project.github_repo_full_name.split("/")[1] ?? "your-repo";
 
   return (
-    <div className="flex bg-background text-on-surface min-h-screen font-body">
-
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-full w-60 bg-white border-r border-zinc-200 flex flex-col py-4 z-50">
-        <div className="px-6 mb-8">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-zinc-950 flex items-center justify-center rounded">
-              <span
-                className="material-symbols-outlined text-white text-sm"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                shield
-              </span>
-            </div>
-            <div>
-              <h1 className="text-xl font-black text-zinc-950 tracking-tighter">CodeShield</h1>
-            </div>
-          </div>
+    <AppLayout
+      activePage="home"
+      breadcrumb={t("dashboard.breadcrumb")}
+      hasProjects={projectList.length > 0}
+    >
+      {/* Install success banner */}
+      {showInstallBanner && (
+        <div className="flex items-center justify-center gap-2 bg-emerald-50 border-b border-emerald-200 text-emerald-700 text-sm py-2.5 px-4">
+          <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+          {t("dashboard.installSuccess")}
         </div>
+      )}
 
-        <nav className="flex-1 px-2 space-y-1">
-          <Link
-            to="/dashboard"
-            className="flex items-center gap-3 h-10 text-zinc-950 font-bold border-l-2 border-zinc-950 pl-4 bg-zinc-50"
-          >
-            <span className="material-symbols-outlined text-[20px]">home</span>
-            <span className="text-sm tracking-tight">{t("dashboard.nav.home")}</span>
-          </Link>
-          {projects !== undefined && projects.length > 0 && (
-            <a className="flex items-center gap-3 h-10 text-zinc-500 pl-4 hover:text-zinc-950 hover:bg-zinc-50 transition-colors cursor-not-allowed opacity-50">
-              <span className="material-symbols-outlined text-[20px]">folder</span>
-              <span className="text-sm tracking-tight">{t("dashboard.nav.projects")}</span>
-            </a>
-          )}
-          <a className="flex items-center gap-3 h-10 text-zinc-500 pl-4 hover:text-zinc-950 hover:bg-zinc-50 transition-colors cursor-not-allowed opacity-50">
-            <span className="material-symbols-outlined text-[20px]">settings</span>
-            <span className="text-sm tracking-tight">{t("dashboard.nav.settings")}</span>
-          </a>
-        </nav>
-
-        <div className="px-2 pt-4 mt-4 border-t border-zinc-100 space-y-1">
-          <a className="flex items-center gap-3 h-10 text-zinc-500 pl-4 hover:text-zinc-950 hover:bg-zinc-50 transition-colors">
-            <span className="material-symbols-outlined text-[20px]">check_circle</span>
-            <span className="text-sm tracking-tight">{t("dashboard.nav.systemStatus")}</span>
-          </a>
-          <button
-            onClick={() => void signOut()}
-            className="flex items-center gap-3 h-10 w-full text-zinc-500 pl-4 hover:text-zinc-950 hover:bg-zinc-50 transition-colors"
-          >
-            <span className="material-symbols-outlined text-[20px]">logout</span>
-            <span className="text-sm tracking-tight">{t("dashboard.nav.logOut")}</span>
-          </button>
+      {projectsError && (
+        <div className="mx-8 mt-6 border border-red-200 bg-red-50 px-5 py-3 rounded-lg text-sm text-red-600">
+          {t("common.error")}
         </div>
-      </aside>
+      )}
 
-      {/* Main */}
-      <div className="ml-60 min-h-screen flex flex-col flex-1">
-
-        {/* Top bar */}
-        <header className="sticky top-0 z-40 bg-white border-b border-zinc-200 h-14 px-6 flex justify-between items-center">
-          <span className="text-sm font-medium tracking-tight text-zinc-950">{t("dashboard.breadcrumb")}</span>
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-zinc-400 text-sm">search</span>
-              <input
-                className="pl-9 pr-4 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:border-zinc-400 transition-all w-56"
-                placeholder={t("dashboard.searchPlaceholder")}
-                type="text"
-                readOnly
-              />
-            </div>
-            <button className="p-2 text-zinc-500 hover:bg-zinc-50 rounded transition-colors">
-              <span className="material-symbols-outlined text-[20px]">notifications</span>
-            </button>
-            <button className="p-2 text-zinc-500 hover:bg-zinc-50 rounded transition-colors">
-              <span className="material-symbols-outlined text-[20px]">settings</span>
-            </button>
-            <div className="w-8 h-8 rounded-full bg-zinc-200 overflow-hidden ml-2 flex-shrink-0">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-zinc-500 text-xs font-bold">
-                  {session?.user?.email?.[0]?.toUpperCase() ?? "U"}
-                </div>
-              )}
-            </div>
-          </div>
-        </header>
-
-        {/* Install success banner */}
-        {showInstallBanner && (
-          <div className="flex items-center justify-center gap-2 bg-emerald-50 border-b border-emerald-200 text-emerald-700 text-sm py-2.5 px-4">
-            <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-            {t("dashboard.installSuccess")}
-          </div>
-        )}
-
-        {projectsError && (
-          <div className="mx-8 mt-6 border border-red-200 bg-red-50 px-5 py-3 rounded-lg text-sm text-red-600">
-            {t("common.error")}
-          </div>
-        )}
-
-        {projectsLoading ? (
-          <LoadingSkeleton />
-        ) : projects !== undefined && projects.length === 0 ? (
-          <InstallScreen installUrl={installUrl} />
-        ) : (
+      {projectsLoading ? (
+        <LoadingSkeleton />
+      ) : projects !== undefined && projects.length === 0 ? (
+        <InstallScreen installUrl={installUrl} />
+      ) : (
         <main className="p-8 max-w-[1280px] w-full mx-auto space-y-8">
 
           {/* Stats */}
@@ -205,9 +119,7 @@ export function DashboardPage() {
 
             {/* Recent Pull Requests */}
             <section className="lg:col-span-2 space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold tracking-tight text-zinc-950">{t("dashboard.recentPRs.title")}</h2>
-              </div>
+              <h2 className="text-lg font-semibold tracking-tight text-zinc-950">{t("dashboard.recentPRs.title")}</h2>
 
               <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
                 {recentRuns.length === 0 ? (
@@ -335,8 +247,7 @@ export function DashboardPage() {
 
           </div>
         </main>
-        )}
-      </div>
+      )}
 
       {/* FAB — only when projects exist */}
       {projects !== undefined && projects.length > 0 && (
@@ -348,8 +259,7 @@ export function DashboardPage() {
           <span className="material-symbols-outlined">add</span>
         </a>
       )}
-
-    </div>
+    </AppLayout>
   );
 }
 
@@ -455,7 +365,6 @@ function InstallScreen({ installUrl }: { installUrl: string }) {
     <main className="flex-1 flex flex-col items-center justify-center px-6 py-16 min-h-[calc(100vh-3.5rem)]">
       <div className="max-w-2xl w-full text-center space-y-8">
 
-        {/* Shield badge */}
         <div className="flex justify-center">
           <div className="w-16 h-16 bg-zinc-950 rounded-2xl flex items-center justify-center shadow-lg">
             <span
@@ -467,13 +376,11 @@ function InstallScreen({ installUrl }: { installUrl: string }) {
           </div>
         </div>
 
-        {/* Copy */}
         <div className="space-y-3">
           <h2 className="text-3xl font-black tracking-tighter text-zinc-950">{t("dashboard.install.headline")}</h2>
           <p className="text-zinc-500 text-base leading-relaxed max-w-lg mx-auto">{t("dashboard.install.subtext")}</p>
         </div>
 
-        {/* CTA */}
         <a
           href={installUrl}
           className="inline-flex items-center gap-2 bg-zinc-950 text-white text-sm font-semibold px-6 py-3 rounded-lg hover:bg-zinc-800 transition-colors"
@@ -482,7 +389,6 @@ function InstallScreen({ installUrl }: { installUrl: string }) {
           {t("dashboard.install.cta")}
         </a>
 
-        {/* Steps */}
         <div className="pt-8 space-y-4">
           <p className="text-xs font-mono text-zinc-400 uppercase tracking-widest">{t("dashboard.install.stepsTitle")}</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">

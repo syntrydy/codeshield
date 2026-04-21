@@ -106,6 +106,36 @@
     "failed": "Failed",
     "cancelled": "Cancelled"
   },
+  "settings": {
+    "title": "Settings",
+    "breadcrumb": "Overview / Settings",
+    "noProjects": "No repositories connected. Install the GitHub App first.",
+    "project": {
+      "specialists": "Active Specialists",
+      "threshold": "Severity Threshold",
+      "locale": "Review Output Language",
+      "save": "Save changes",
+      "saving": "Saving…",
+      "saved": "Saved"
+    },
+    "specialists": {
+      "security": "Security",
+      "correctness": "Correctness",
+      "performance": "Performance",
+      "style": "Style"
+    },
+    "threshold": {
+      "critical": "Critical only",
+      "high": "High and above",
+      "medium": "Medium and above",
+      "low": "Low and above",
+      "info": "All findings"
+    },
+    "locale": {
+      "en": "English",
+      "fr": "Français"
+    }
+  },
   "common": {
     "loading": "Loading…",
     "error": "Something went wrong.",
