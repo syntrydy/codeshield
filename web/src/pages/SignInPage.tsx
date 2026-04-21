@@ -1,150 +1,490 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../hooks/useAuth";
 
-const features = [
-  {
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-      </svg>
-    ),
-    title: "Security",
-    desc: "SQL injection, auth flaws, secret exposure, insecure dependencies.",
+type SpecialistTab = "security" | "performance" | "architecture";
+
+const TABS: SpecialistTab[] = ["security", "performance", "architecture"];
+
+const CODE_SNIPPETS: Record<SpecialistTab, { lines: string[] }> = {
+  security: {
+    lines: [
+      '@app.post("/upload")',
+      "async def handle_file(file: UploadFile):",
+      '    with open(f"/tmp/{file.filename}", "wb") as f:',
+      "        content = await file.read()",
+      "        f.write(content)",
+      '    return {"status": "ok"}',
+    ],
   },
-  {
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" />
-      </svg>
-    ),
-    title: "Correctness",
-    desc: "Null dereferences, off-by-one errors, race conditions, swallowed exceptions.",
+  performance: {
+    lines: [
+      '@app.get("/users")',
+      "async def get_users(db: Session):",
+      "    users = db.query(User).all()",
+      "    return [",
+      '        {"id": u.id, "posts": db.query(Post)',
+      "                          .filter_by(user_id=u.id)",
+      "                          .count()}",
+      "        for u in users",
+      "    ]",
+    ],
   },
-  {
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-      </svg>
-    ),
-    title: "Performance",
-    desc: "N+1 queries, blocking I/O in async code, memory leaks, missing indexes.",
+  architecture: {
+    lines: [
+      "from app.models import User",
+      "from app.services import email",
+      "",
+      "class UserController:",
+      "    def delete_user(self, user_id: int):",
+      "        user = User.query.get(user_id)",
+      "        email.send_deletion_notice(user.email)",
+      "        user.delete()",
+    ],
   },
-  {
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" />
-      </svg>
-    ),
-    title: "Style",
-    desc: "Naming inconsistencies, missing docs, dead code, non-idiomatic patterns.",
-  },
-];
+};
 
 export function SignInPage() {
   const { t } = useTranslation();
   const { signInWithGitHub } = useAuth();
+  const [activeTab, setActiveTab] = useState<SpecialistTab>("security");
+
+  const installUrl = `https://github.com/apps/${import.meta.env.VITE_GITHUB_APP_SLUG}/installations/new`;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#ededed] flex flex-col">
+    <div className="bg-background font-body text-on-surface min-h-screen">
 
       {/* Nav */}
-      <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-            </svg>
-            <span className="font-semibold text-white tracking-tight">CodeShield</span>
+      <header className="sticky top-0 w-full z-50 border-b border-zinc-200 bg-white/80 backdrop-blur-md">
+        <nav className="flex items-center justify-between px-6 h-14 max-w-[1200px] mx-auto">
+          <div className="text-lg font-bold tracking-tighter text-zinc-900">CodeShield</div>
+          <div className="hidden md:flex items-center gap-8">
+            <a href="#specialists" className="text-zinc-500 text-sm hover:text-zinc-900 transition-colors">{t("landing.navHowItWorks")}</a>
+            <a href="#pricing" className="text-zinc-500 text-sm hover:text-zinc-900 transition-colors">{t("landing.navPricing")}</a>
+            <a href="#" className="text-zinc-500 text-sm hover:text-zinc-900 transition-colors">{t("landing.navDocs")}</a>
+            <button
+              onClick={() => void signInWithGitHub()}
+              className="text-zinc-500 text-sm hover:text-zinc-900 transition-colors"
+            >
+              {t("signIn.button")}
+            </button>
           </div>
           <button
             onClick={() => void signInWithGitHub()}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white/80 hover:text-white border border-white/10 rounded-md hover:border-white/20 transition-all"
+            className="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98] transition-transform"
           >
-            <GitHubIcon />
-            {t("signIn.button")}
+            {t("landing.navInstall")}
           </button>
-        </div>
-      </nav>
+        </nav>
+      </header>
 
-      {/* Hero */}
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-6 pt-28 pb-20">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs text-white/60 mb-8">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          4 specialist agents · AI-powered code review
-        </div>
+      <main className="max-w-[1200px] mx-auto px-6">
 
-        <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-white max-w-3xl leading-[1.1]">
-          AI Code Review for{" "}
-          <span className="bg-gradient-to-r from-white to-white/50 bg-clip-text text-transparent">
-            GitHub Pull Requests
-          </span>
-        </h1>
+        {/* Hero */}
+        <section className="py-16 flex flex-col items-center text-center">
+          <div className="max-w-[720px]">
+            <h1 className="text-[48px] leading-[1.1] font-semibold tracking-tighter text-primary mb-4">
+              {t("landing.heroHeadline")}
+            </h1>
+            <p className="text-on-surface-variant text-lg mb-10">
+              {t("landing.heroSubtext")}
+            </p>
+            <div className="flex items-center justify-center gap-4 flex-wrap">
+              <button
+                onClick={() => void signInWithGitHub()}
+                className="bg-primary text-on-primary px-6 py-3 rounded text-sm font-medium active:scale-[0.98] transition-transform"
+              >
+                {t("landing.heroCtaPrimary")}
+              </button>
+              <a
+                href={installUrl}
+                className="bg-white border border-outline-variant px-6 py-3 rounded text-sm font-medium hover:bg-surface-container-low transition-colors"
+              >
+                {t("landing.heroCtaSecondary")}
+              </a>
+            </div>
+          </div>
 
-        <p className="mt-6 text-lg text-white/50 max-w-xl leading-relaxed">
-          Four specialist agents review every pull request for security vulnerabilities,
-          logic errors, performance regressions, and style issues — automatically posted
-          as GitHub Check Run annotations.
-        </p>
+          {/* GitHub PR diff mock */}
+          <div className="mt-16 w-full max-w-[900px] border border-zinc-200 rounded-lg overflow-hidden shadow-sm bg-white">
+            <div className="bg-zinc-50 border-b border-zinc-200 px-4 py-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px] text-zinc-400">account_tree</span>
+                <span className="font-mono text-[12px] text-zinc-600">codeshield-ai / core-engine</span>
+              </div>
+              <span className="bg-secondary/10 text-secondary px-2 py-0.5 rounded-full text-[10px] font-bold">PR #421</span>
+            </div>
+            <div className="p-4 bg-white font-mono text-[13px] leading-6 text-left">
+              <div className="flex bg-[#ffebe9] px-2">
+                <span className="w-8 text-zinc-400 select-none">-12</span>
+                <span className="text-[#cf222e]">- results = db.execute(f"SELECT * FROM users WHERE id = {"{user_id}"}")</span>
+              </div>
+              <div className="flex bg-[#dafbe1] px-2">
+                <span className="w-8 text-zinc-400 select-none">+12</span>
+                <span className="text-[#1a7f37]">+ results = db.execute("SELECT * FROM users WHERE id = %s", (user_id,))</span>
+              </div>
+              <div className="ml-8 my-3 border border-secondary rounded overflow-hidden">
+                <div className="bg-secondary/5 px-3 py-2 flex items-center gap-2 border-b border-secondary/20">
+                  <span
+                    className="material-symbols-outlined text-secondary text-[16px]"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    verified_user
+                  </span>
+                  <span className="font-bold text-secondary text-[12px]">CodeShield Security Specialist</span>
+                </div>
+                <div className="p-3 bg-white text-zinc-800">
+                  <p className="mb-2 text-sm">Found a potential <span className="font-bold text-error">SQL Injection</span> vulnerability.</p>
+                  <p className="text-zinc-500 text-[12px]">The previous implementation used f-string formatting for query parameters, which allows malicious input to alter the SQL structure.</p>
+                  <div className="mt-2 flex gap-2">
+                    <span className="bg-error/10 text-error px-2 py-0.5 rounded text-[11px] font-medium">Critical</span>
+                    <span className="bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded text-[11px] font-medium">CWE-89</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex px-2">
+                <span className="w-8 text-zinc-400 select-none">13</span>
+                <span>  return results.fetchone()</span>
+              </div>
+            </div>
+          </div>
 
-        <div className="mt-10 flex flex-col sm:flex-row items-center gap-3">
-          <button
-            onClick={() => void signInWithGitHub()}
-            className="flex items-center gap-2.5 px-5 py-2.5 bg-white text-black text-sm font-semibold rounded-lg hover:bg-white/90 transition-all shadow-lg shadow-white/10"
+          {/* Social proof */}
+          <div className="mt-10 flex flex-col items-center gap-6">
+            <p className="text-[12px] font-medium tracking-[0.05em] text-zinc-400 uppercase">{t("landing.socialProof")}</p>
+            <div className="flex flex-wrap justify-center gap-16 opacity-40 grayscale">
+              {["[ACME]", "[GLOBEX]", "[SOYLENT]", "[INITECH]"].map((name) => (
+                <span key={name} className="text-[18px] font-semibold text-zinc-400 tracking-widest">{name}</span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Specialists grid */}
+        <section id="specialists" className="py-16">
+          <div className="max-w-[720px] mx-auto mb-10 text-center">
+            <h2 className="text-2xl font-semibold tracking-tight text-primary mb-2">{t("landing.specialistsTitle")}</h2>
+            <p className="text-on-surface-variant">{t("landing.specialistsSubtitle")}</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <SpecialistCard
+              iconBgClass="bg-error/10 text-error"
+              icon="shield"
+              title={t("landing.securityTitle")}
+              items={[t("landing.securityItem1"), t("landing.securityItem2"), t("landing.securityItem3")]}
+              arrowClass="text-error"
+            />
+            <SpecialistCard
+              iconBgClass="bg-secondary/10 text-secondary"
+              icon="check_circle"
+              title={t("landing.correctnessTitle")}
+              items={[t("landing.correctnessItem1"), t("landing.correctnessItem2"), t("landing.correctnessItem3")]}
+              arrowClass="text-secondary"
+            />
+            <SpecialistCard
+              iconBgClass="bg-zinc-100 text-zinc-900"
+              icon="speed"
+              title={t("landing.performanceTitle")}
+              items={[t("landing.performanceItem1"), t("landing.performanceItem2"), t("landing.performanceItem3")]}
+              arrowClass="text-zinc-900"
+            />
+            <SpecialistCard
+              iconBgClass="bg-zinc-100 text-zinc-600"
+              icon="auto_awesome"
+              title={t("landing.styleTitle")}
+              items={[t("landing.styleItem1"), t("landing.styleItem2"), t("landing.styleItem3")]}
+              arrowClass="text-zinc-400"
+            />
+          </div>
+        </section>
+
+        {/* Interactive review panel */}
+        <section className="py-16">
+          <div className="max-w-[720px] mx-auto mb-10">
+            <h2 className="text-2xl font-semibold tracking-tight text-primary mb-2">{t("landing.reviewTitle")}</h2>
+            <p className="text-on-surface-variant">{t("landing.reviewSubtitle")}</p>
+          </div>
+          <div className="border border-outline-variant rounded-xl overflow-hidden bg-white">
+            <div className="flex border-b border-outline-variant bg-surface-container-low overflow-x-auto">
+              {TABS.map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-6 py-4 text-[12px] font-medium tracking-[0.05em] border-b-2 transition-colors whitespace-nowrap ${
+                    activeTab === tab
+                      ? "border-secondary text-secondary bg-white"
+                      : "border-transparent text-on-surface-variant hover:text-primary"
+                  }`}
+                >
+                  {tab.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <ReviewTabContent tab={activeTab} codeLines={CODE_SNIPPETS[activeTab].lines} />
+          </div>
+        </section>
+
+        {/* Architecture */}
+        <section className="py-16">
+          <div className="max-w-[720px] mx-auto text-center mb-10">
+            <h2 className="text-2xl font-semibold tracking-tight text-primary mb-2">{t("landing.archTitle")}</h2>
+            <p className="text-on-surface-variant">{t("landing.archSubtitle")}</p>
+          </div>
+          <div className="flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6 overflow-x-auto pb-4 flex-wrap">
+            {[
+              { icon: "browser_updated", label: "Browser" },
+              null,
+              { icon: "api", label: "FastAPI" },
+              null,
+              { icon: "database", label: "Celery" },
+              null,
+              { icon: "hub", label: "LangGraph", highlight: true },
+              null,
+              { icon: "terminal", label: "GitHub" },
+            ].map((item, i) =>
+              item === null ? (
+                <div key={i} className="w-px h-8 md:w-8 md:h-px bg-outline-variant" />
+              ) : (
+                <div
+                  key={item.label}
+                  className={`flex flex-col items-center p-4 border rounded min-w-[120px] ${
+                    item.highlight ? "border-secondary bg-secondary/5" : "border-outline-variant bg-white"
+                  }`}
+                >
+                  <span className={`material-symbols-outlined mb-2 ${item.highlight ? "text-secondary" : "text-zinc-400"}`}>
+                    {item.icon}
+                  </span>
+                  <span className={`font-mono text-[11px] font-bold ${item.highlight ? "text-secondary" : ""}`}>
+                    {item.label}
+                  </span>
+                </div>
+              )
+            )}
+          </div>
+        </section>
+
+        {/* Pricing */}
+        <section id="pricing" className="py-16">
+          <div className="max-w-[720px] mx-auto text-center mb-10">
+            <h2 className="text-2xl font-semibold tracking-tight text-primary mb-2">{t("landing.pricingTitle")}</h2>
+            <p className="text-on-surface-variant">{t("landing.pricingSubtitle")}</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Free */}
+            <div className="border border-outline-variant rounded-lg p-6 bg-white flex flex-col">
+              <PricingHeader tier={t("landing.freeTier")} price={t("landing.freePrice")} period={t("landing.freePeriod")} />
+              <PricingFeatureList features={[t("landing.freeFeature1"), t("landing.freeFeature2"), t("landing.freeFeature3")]} iconClass="text-zinc-400" />
+              <button
+                onClick={() => void signInWithGitHub()}
+                className="w-full py-2 border border-outline-variant rounded font-medium text-sm hover:bg-surface-container-low transition-colors"
+              >
+                {t("landing.freeCta")}
+              </button>
+            </div>
+
+            {/* Team */}
+            <div className="border-2 border-secondary rounded-lg p-6 bg-white flex flex-col relative">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-secondary text-white px-3 py-1 rounded-full text-[10px] font-bold tracking-wider">
+                {t("landing.teamBadge")}
+              </div>
+              <PricingHeader tier={t("landing.teamTier")} tierClass="text-secondary" price={t("landing.teamPrice")} period={t("landing.teamPeriod")} />
+              <PricingFeatureList features={[t("landing.teamFeature1"), t("landing.teamFeature2"), t("landing.teamFeature3"), t("landing.teamFeature4")]} iconClass="text-secondary" />
+              <button
+                onClick={() => void signInWithGitHub()}
+                className="w-full py-2 bg-primary text-white rounded font-medium text-sm hover:bg-zinc-800 transition-colors"
+              >
+                {t("landing.teamCta")}
+              </button>
+            </div>
+
+            {/* Enterprise */}
+            <div className="border border-outline-variant rounded-lg p-6 bg-white flex flex-col">
+              <PricingHeader tier={t("landing.enterpriseTier")} price={t("landing.enterprisePrice")} />
+              <PricingFeatureList features={[t("landing.enterpriseFeature1"), t("landing.enterpriseFeature2"), t("landing.enterpriseFeature3"), t("landing.enterpriseFeature4")]} iconClass="text-zinc-400" />
+              <button className="w-full py-2 border border-outline-variant rounded font-medium text-sm hover:bg-surface-container-low transition-colors">
+                {t("landing.enterpriseCta")}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Final CTA */}
+        <section className="py-16 mb-16 border-t border-outline-variant">
+          <div
+            className="bg-zinc-950 text-white rounded-2xl p-10 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative"
           >
-            <GitHubIcon className="text-black" />
-            {t("signIn.button")}
-          </button>
-        </div>
-
-        {/* Fake terminal / check run preview */}
-        <div className="mt-16 w-full max-w-2xl rounded-xl border border-white/[0.08] bg-[#111] overflow-hidden shadow-2xl shadow-black/50 text-left">
-          <div className="flex items-center gap-1.5 px-4 py-3 border-b border-white/[0.06] bg-[#0d0d0d]">
-            <span className="w-3 h-3 rounded-full bg-[#ff5f57]" />
-            <span className="w-3 h-3 rounded-full bg-[#febc2e]" />
-            <span className="w-3 h-3 rounded-full bg-[#28c840]" />
-            <span className="ml-3 text-xs text-white/30">AI Code Review · pull_request #42</span>
+            <div
+              className="absolute inset-0 opacity-10 pointer-events-none"
+              style={{
+                backgroundImage: "linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(90deg, #ffffff 1px, transparent 1px)",
+                backgroundSize: "40px 40px",
+              }}
+            />
+            <div className="relative z-10">
+              <h2 className="text-[32px] leading-tight font-semibold mb-2">{t("landing.ctaHeadline")}</h2>
+              <p className="text-zinc-400">{t("landing.ctaSubtext")}</p>
+            </div>
+            <div className="relative z-10 flex gap-4 flex-wrap">
+              <button
+                onClick={() => void signInWithGitHub()}
+                className="bg-white text-zinc-950 px-8 py-3 rounded font-bold text-sm hover:bg-zinc-100 transition-colors"
+              >
+                {t("landing.ctaPrimary")}
+              </button>
+              <button className="bg-transparent border border-zinc-700 text-white px-8 py-3 rounded font-bold text-sm hover:bg-zinc-900 transition-colors">
+                {t("landing.ctaSecondary")}
+              </button>
+            </div>
           </div>
-          <div className="p-5 space-y-2 font-mono text-xs">
-            <p><span className="text-emerald-400">✓</span> <span className="text-white/40">planner</span> <span className="text-white/60">classified as feature · 3 files changed</span></p>
-            <p><span className="text-emerald-400">✓</span> <span className="text-white/40">security</span> <span className="text-white/60">1 finding · SQL injection in</span> <span className="text-amber-400">src/db/queries.py:42</span></p>
-            <p><span className="text-emerald-400">✓</span> <span className="text-white/40">correctness</span> <span className="text-white/60">no issues found</span></p>
-            <p><span className="text-emerald-400">✓</span> <span className="text-white/40">performance</span> <span className="text-white/60">1 finding · N+1 query in</span> <span className="text-amber-400">src/api/users.py:87</span></p>
-            <p><span className="text-emerald-400">✓</span> <span className="text-white/40">style</span> <span className="text-white/60">no issues found</span></p>
-            <p className="pt-1 border-t border-white/[0.06]"><span className="text-red-400">✗ request_changes</span> <span className="text-white/40">· 2 findings · $0.004</span></p>
-          </div>
-        </div>
+        </section>
       </main>
 
-      {/* Features */}
-      <section className="max-w-6xl mx-auto px-6 pb-24 w-full">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {features.map((f) => (
-            <div key={f.title} className="rounded-xl border border-white/[0.08] bg-[#111] p-5 hover:border-white/20 transition-colors">
-              <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-white/70 mb-4">
-                {f.icon}
-              </div>
-              <h3 className="font-semibold text-white text-sm mb-1">{f.title}</h3>
-              <p className="text-xs text-white/40 leading-relaxed">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Footer */}
-      <footer className="border-t border-white/[0.06] py-6 px-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between text-xs text-white/30">
-          <span>© 2026 CodeShield</span>
-          <span>LangGraph · Supabase · FastAPI</span>
+      <footer className="w-full border-t border-zinc-200 bg-white">
+        <div className="flex flex-col md:flex-row items-center justify-between px-6 py-12 max-w-[1200px] mx-auto gap-4">
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-semibold text-zinc-900">CodeShield</span>
+            <p className="text-xs text-zinc-500">{t("landing.footerCopyright")}</p>
+          </div>
+          <div className="flex items-center gap-6 flex-wrap justify-center">
+            {(["footerSecurity", "footerPrivacy", "footerTerms", "footerChangelog", "footerStatus"] as const).map((key) => (
+              <a key={key} href="#" className="text-xs text-zinc-500 hover:text-zinc-900 underline transition-colors">
+                {t(`landing.${key}`)}
+              </a>
+            ))}
+          </div>
         </div>
       </footer>
     </div>
   );
 }
 
-function GitHubIcon({ className = "" }: { className?: string }) {
+function SpecialistCard({
+  iconBgClass,
+  icon,
+  title,
+  items,
+  arrowClass,
+}: {
+  iconBgClass: string;
+  icon: string;
+  title: string;
+  items: string[];
+  arrowClass: string;
+}) {
   return (
-    <svg viewBox="0 0 24 24" className={`h-4 w-4 fill-current ${className}`} aria-hidden="true">
-      <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844a9.59 9.59 0 012.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-    </svg>
+    <div className="border border-outline-variant p-6 rounded-lg bg-white">
+      <div className="flex items-center gap-3 mb-4">
+        <div className={`w-8 h-8 flex items-center justify-center rounded ${iconBgClass}`}>
+          <span className="material-symbols-outlined text-[20px]">{icon}</span>
+        </div>
+        <h3 className="text-lg font-semibold tracking-tight text-primary">{title}</h3>
+      </div>
+      <ul className="space-y-3 font-mono text-[13px] text-zinc-600">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2">
+            <span className={arrowClass}>→</span>
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ReviewTabContent({ tab, codeLines }: { tab: SpecialistTab; codeLines: string[] }) {
+  const { t } = useTranslation();
+
+  const finding = {
+    security: {
+      title: t("landing.pathTraversalTitle"),
+      desc: t("landing.pathTraversalDesc"),
+      fix: t("landing.pathTraversalFix"),
+      severity: t("landing.highSeverity"),
+      severityClass: "bg-error-container text-on-error-container",
+    },
+    performance: {
+      title: t("landing.n1QueryTitle"),
+      desc: t("landing.n1QueryDesc"),
+      fix: t("landing.n1QueryFix"),
+      severity: t("landing.mediumSeverity"),
+      severityClass: "bg-yellow-100 text-yellow-800",
+    },
+    architecture: {
+      title: t("landing.layerViolationTitle"),
+      desc: t("landing.layerViolationDesc"),
+      fix: t("landing.layerViolationFix"),
+      severity: t("landing.lowSeverity"),
+      severityClass: "bg-blue-100 text-blue-800",
+    },
+  }[tab];
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2">
+      <div className="p-6 bg-zinc-950 font-mono text-[13px] text-zinc-300 overflow-x-auto">
+        <pre>
+          <code>
+            {codeLines.map((line, i) => (
+              <div key={i}>
+                <span className="text-zinc-500 select-none mr-3">{String(i + 1).padStart(2, " ")}</span>
+                {line}
+              </div>
+            ))}
+          </code>
+        </pre>
+      </div>
+      <div className="p-6 border-l border-outline-variant flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <span className="text-[12px] font-medium tracking-[0.05em] text-zinc-500">{t("landing.findingCount")}</span>
+          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${finding.severityClass}`}>{finding.severity}</span>
+        </div>
+        <div>
+          <h4 className="text-sm font-semibold text-primary mb-1">{finding.title}</h4>
+          <p className="text-sm text-zinc-600 leading-relaxed">{finding.desc}</p>
+        </div>
+        <div className="mt-auto pt-4 border-t border-zinc-100">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="material-symbols-outlined text-secondary text-[18px]">lightbulb</span>
+            <span className="text-[12px] font-medium tracking-[0.05em] text-secondary">{t("landing.suggestedFix")}</span>
+          </div>
+          <p className="text-[12px] text-zinc-500 font-mono italic">{finding.fix}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PricingHeader({
+  tier,
+  tierClass = "text-zinc-500",
+  price,
+  period,
+}: {
+  tier: string;
+  tierClass?: string;
+  price: string;
+  period?: string;
+}) {
+  return (
+    <div className="mb-6">
+      <h3 className={`text-[12px] font-medium tracking-[0.05em] mb-1 ${tierClass}`}>{tier}</h3>
+      <div className="flex items-baseline gap-1">
+        <span className="text-2xl font-semibold tracking-tight text-primary">{price}</span>
+        {period && <span className="text-[12px] font-medium text-zinc-500">{period}</span>}
+      </div>
+    </div>
+  );
+}
+
+function PricingFeatureList({ features, iconClass }: { features: string[]; iconClass: string }) {
+  return (
+    <ul className="space-y-4 mb-16 flex-grow">
+      {features.map((f) => (
+        <li key={f} className="flex items-start gap-2 text-sm text-zinc-600">
+          <span className={`material-symbols-outlined text-[18px] ${iconClass}`}>check_small</span>
+          {f}
+        </li>
+      ))}
+    </ul>
   );
 }
