@@ -73,10 +73,6 @@ export function AppLayout({ activePage, breadcrumb, hasProjects, children }: App
         </nav>
 
         <div className="px-2 pt-4 mt-4 border-t border-zinc-100 space-y-1">
-          <span className="flex items-center gap-3 h-10 pl-4 text-sm text-zinc-500 opacity-50 cursor-not-allowed">
-            <span className="material-symbols-outlined text-[20px]">check_circle</span>
-            {t("dashboard.nav.systemStatus")}
-          </span>
           <button
             onClick={() => void signOut().then(() => navigate("/"))}
             className="flex items-center gap-3 h-10 w-full text-zinc-500 pl-4 hover:text-zinc-950 hover:bg-zinc-50 transition-colors text-sm tracking-tight"
