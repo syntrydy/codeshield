@@ -17,7 +17,48 @@
     "installSuccess": "Application GitHub installée avec succès. Vos dépôts apparaîtront ci-dessous.",
     "defaultBranch": "Branche par défaut",
     "specialists": "Spécialistes",
-    "threshold": "Seuil de sévérité"
+    "threshold": "Seuil de sévérité",
+    "version": "v1.0.0",
+    "breadcrumb": "Vue d'ensemble / Tableau de bord",
+    "searchPlaceholder": "Rechercher des ressources...",
+    "nav": {
+      "projects": "Projets",
+      "pullRequests": "Pull Requests",
+      "settings": "Paramètres",
+      "docs": "Documentation",
+      "systemStatus": "Statut système",
+      "logOut": "Se déconnecter"
+    },
+    "stats": {
+      "totalProjects": "Projets totaux",
+      "totalProjectsSub": "dépôts actifs",
+      "pendingReviews": "Revues en attente",
+      "pendingReviewsSub": "analyse en cours",
+      "totalRuns": "Exécutions totales",
+      "totalRunsSub": "revues terminées",
+      "totalCost": "Coût total",
+      "totalCostSub": "dépenses de revue IA"
+    },
+    "recentPRs": {
+      "title": "Pull Requests récentes",
+      "colIdentifier": "Identifiant",
+      "colFindings": "Résultats spécialisés",
+      "colStatus": "Statut",
+      "processing": "Analyse en cours...",
+      "noRuns": "Aucune exécution. Installez l'application GitHub pour commencer."
+    },
+    "health": {
+      "title": "Santé",
+      "healthy": "Sain",
+      "scanning": "Scan en cours...",
+      "reviewRequired": "Revue requise",
+      "noData": "Pas encore de données",
+      "noProjects": "Aucun projet connecté.",
+      "shellLabel": "Shell actif",
+      "shellDone": "{{count}} exécutions scannées. TERMINÉ.",
+      "shellResult": "Analyse complète.",
+      "shellIdle": "En attente de la première revue PR..."
+    }
   },
   "runs": {
     "title": "Exécutions",

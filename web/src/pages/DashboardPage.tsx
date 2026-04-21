@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { fetchProjects } from "../lib/api";
+import { fetchProjects, fetchRuns, type Project, type Run } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
+
+type RunWithProject = Run & { project: Project };
 
 export function DashboardPage() {
   const { t } = useTranslation();
-  const { signOut } = useAuth();
+  const { signOut, session } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showInstallBanner, setShowInstallBanner] = useState(searchParams.get("installed") === "1");
 
@@ -19,119 +21,388 @@ export function DashboardPage() {
     }
   }, [showInstallBanner, setSearchParams]);
 
-  const { data: projects, isLoading, isError } = useQuery({
+  const { data: projects, isError: projectsError } = useQuery({
     queryKey: ["projects"],
     queryFn: fetchProjects,
   });
 
-  return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#ededed]">
+  const projectList = projects ?? [];
 
-      {/* Nav */}
-      <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-sm">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+  const runsQueries = useQueries({
+    queries: projectList.map((p) => ({
+      queryKey: ["runs", p.id] as const,
+      queryFn: () => fetchRuns(p.id),
+      enabled: !!projects,
+    })),
+  });
+
+  const allRuns: RunWithProject[] = runsQueries.flatMap((q, i) =>
+    (q.data ?? []).map((r) => ({ ...r, project: projectList[i] }))
+  );
+
+  const totalProjects = projectList.length;
+  const pendingReviews = allRuns.filter((r) => r.status === "queued" || r.status === "running").length;
+  const totalRuns = allRuns.filter((r) => r.status === "completed").length;
+  const totalCost = allRuns.reduce((sum, r) => sum + r.total_cost_usd, 0);
+
+  const recentRuns = [...allRuns]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 8);
+
+  const healthProjects = projectList.slice(0, 4).map((p) => {
+    const projectRuns = allRuns.filter((r) => r.project_id === p.id);
+    const lastRun = [...projectRuns].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0];
+    return { project: p, lastRun };
+  });
+
+  const avatarUrl = session?.user?.user_metadata?.["avatar_url"] as string | undefined;
+  const installUrl = `https://github.com/apps/${import.meta.env.VITE_GITHUB_APP_SLUG}/installations/new`;
+  const latestProject = healthProjects[0]?.project.github_repo_full_name.split("/")[1] ?? "your-repo";
+
+  return (
+    <div className="flex bg-background text-on-surface min-h-screen font-body">
+
+      {/* Sidebar */}
+      <aside className="fixed left-0 top-0 h-full w-60 bg-white border-r border-zinc-200 flex flex-col py-4 z-50">
+        <div className="px-6 mb-8">
           <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-            </svg>
-            <span className="font-semibold tracking-tight text-white">CodeShield</span>
+            <div className="w-8 h-8 bg-zinc-950 flex items-center justify-center rounded">
+              <span
+                className="material-symbols-outlined text-white text-sm"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                shield
+              </span>
+            </div>
+            <div>
+              <h1 className="text-xl font-black text-zinc-950 tracking-tighter">CodeShield</h1>
+              <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">{t("dashboard.version")}</p>
+            </div>
           </div>
+        </div>
+
+        <nav className="flex-1 px-2 space-y-1">
+          <Link
+            to="/dashboard"
+            className="flex items-center gap-3 h-10 text-zinc-950 font-bold border-l-2 border-zinc-950 pl-4 bg-zinc-50"
+          >
+            <span className="material-symbols-outlined text-[20px]">folder</span>
+            <span className="text-sm tracking-tight">{t("dashboard.nav.projects")}</span>
+          </Link>
+          <a className="flex items-center gap-3 h-10 text-zinc-500 pl-4 hover:text-zinc-950 hover:bg-zinc-50 transition-colors cursor-not-allowed opacity-50">
+            <span className="material-symbols-outlined text-[20px]">merge_type</span>
+            <span className="text-sm tracking-tight">{t("dashboard.nav.pullRequests")}</span>
+          </a>
+          <a className="flex items-center gap-3 h-10 text-zinc-500 pl-4 hover:text-zinc-950 hover:bg-zinc-50 transition-colors cursor-not-allowed opacity-50">
+            <span className="material-symbols-outlined text-[20px]">settings</span>
+            <span className="text-sm tracking-tight">{t("dashboard.nav.settings")}</span>
+          </a>
+          <a className="flex items-center gap-3 h-10 text-zinc-500 pl-4 hover:text-zinc-950 hover:bg-zinc-50 transition-colors">
+            <span className="material-symbols-outlined text-[20px]">description</span>
+            <span className="text-sm tracking-tight">{t("dashboard.nav.docs")}</span>
+          </a>
+        </nav>
+
+        <div className="px-2 pt-4 mt-4 border-t border-zinc-100 space-y-1">
+          <a className="flex items-center gap-3 h-10 text-zinc-500 pl-4 hover:text-zinc-950 hover:bg-zinc-50 transition-colors">
+            <span className="material-symbols-outlined text-[20px]">check_circle</span>
+            <span className="text-sm tracking-tight">{t("dashboard.nav.systemStatus")}</span>
+          </a>
           <button
             onClick={() => void signOut()}
-            className="text-xs text-white/40 hover:text-white/70 transition-colors"
+            className="flex items-center gap-3 h-10 w-full text-zinc-500 pl-4 hover:text-zinc-950 hover:bg-zinc-50 transition-colors"
           >
-            {t("nav.signOut")}
+            <span className="material-symbols-outlined text-[20px]">logout</span>
+            <span className="text-sm tracking-tight">{t("dashboard.nav.logOut")}</span>
           </button>
         </div>
-      </header>
+      </aside>
 
-      {showInstallBanner && (
-        <div className="flex items-center justify-center gap-2 bg-emerald-500/10 border-b border-emerald-500/20 text-emerald-400 text-sm py-2.5 px-4">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {t("dashboard.installSuccess")}
-        </div>
-      )}
+      {/* Main */}
+      <div className="ml-60 min-h-screen flex flex-col flex-1">
 
-      <main className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-xl font-semibold text-white">{t("dashboard.title")}</h1>
-            <p className="text-sm text-white/40 mt-0.5">Repositories connected to CodeShield</p>
+        {/* Top bar */}
+        <header className="sticky top-0 z-40 bg-white border-b border-zinc-200 h-14 px-6 flex justify-between items-center">
+          <span className="text-sm font-medium tracking-tight text-zinc-950">{t("dashboard.breadcrumb")}</span>
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-zinc-400 text-sm">search</span>
+              <input
+                className="pl-9 pr-4 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:border-zinc-400 transition-all w-56"
+                placeholder={t("dashboard.searchPlaceholder")}
+                type="text"
+                readOnly
+              />
+            </div>
+            <button className="p-2 text-zinc-500 hover:bg-zinc-50 rounded transition-colors">
+              <span className="material-symbols-outlined text-[20px]">notifications</span>
+            </button>
+            <button className="p-2 text-zinc-500 hover:bg-zinc-50 rounded transition-colors">
+              <span className="material-symbols-outlined text-[20px]">settings</span>
+            </button>
+            <div className="w-8 h-8 rounded-full bg-zinc-200 overflow-hidden ml-2 flex-shrink-0">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-zinc-500 text-xs font-bold">
+                  {session?.user?.email?.[0]?.toUpperCase() ?? "U"}
+                </div>
+              )}
+            </div>
           </div>
-          <a
-            href={`https://github.com/apps/${import.meta.env.VITE_GITHUB_APP_SLUG}/installations/new`}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-white text-black rounded-lg hover:bg-white/90 transition-all"
-          >
-            {t("dashboard.installCta")}
-          </a>
-        </div>
+        </header>
 
-        {isLoading && (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-20 rounded-xl border border-white/[0.06] bg-[#111] animate-pulse" />
-            ))}
+        {/* Install success banner */}
+        {showInstallBanner && (
+          <div className="flex items-center justify-center gap-2 bg-emerald-50 border-b border-emerald-200 text-emerald-700 text-sm py-2.5 px-4">
+            <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+            {t("dashboard.installSuccess")}
           </div>
         )}
 
-        {isError && (
-          <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-400">
+        {projectsError && (
+          <div className="mx-8 mt-6 border border-red-200 bg-red-50 px-5 py-3 rounded-lg text-sm text-red-600">
             {t("common.error")}
           </div>
         )}
 
-        {projects && projects.length === 0 && (
-          <div className="rounded-xl border border-white/[0.06] bg-[#111] px-6 py-16 text-center">
-            <svg className="w-10 h-10 mx-auto text-white/20 mb-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
-            </svg>
-            <p className="text-sm text-white/40">{t("dashboard.empty")}</p>
-          </div>
-        )}
+        <main className="p-8 max-w-[1280px] w-full mx-auto space-y-8">
 
-        <div className="space-y-3">
-          {projects?.map((project) => (
-            <Link
-              key={project.id}
-              to={`/projects/${project.id}/runs`}
-              className="group flex items-center justify-between rounded-xl border border-white/[0.06] bg-[#111] px-5 py-4 hover:border-white/[0.12] hover:bg-[#161616] transition-all"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-                  </svg>
+          {/* Stats */}
+          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard
+              label={t("dashboard.stats.totalProjects")}
+              value={totalProjects}
+              icon="check_circle"
+              sub={t("dashboard.stats.totalProjectsSub")}
+            />
+            <StatCard
+              label={t("dashboard.stats.pendingReviews")}
+              value={pendingReviews}
+              icon="hourglass_empty"
+              sub={t("dashboard.stats.pendingReviewsSub")}
+            />
+            <StatCard
+              label={t("dashboard.stats.totalRuns")}
+              value={totalRuns}
+              icon="fact_check"
+              sub={t("dashboard.stats.totalRunsSub")}
+              highlight={totalRuns === 0 ? undefined : "normal"}
+            />
+            <StatCard
+              label={t("dashboard.stats.totalCost")}
+              value={`$${totalCost.toFixed(4)}`}
+              icon="bolt"
+              sub={t("dashboard.stats.totalCostSub")}
+            />
+          </section>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            {/* Recent Pull Requests */}
+            <section className="lg:col-span-2 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold tracking-tight text-zinc-950">{t("dashboard.recentPRs.title")}</h2>
+              </div>
+
+              <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+                {recentRuns.length === 0 ? (
+                  <div className="px-6 py-12 text-center text-sm text-zinc-500">
+                    {t("dashboard.recentPRs.noRuns")}
+                    <div className="mt-3">
+                      <a
+                        href={installUrl}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-950 hover:underline"
+                      >
+                        {t("dashboard.installCta")}
+                        <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-zinc-50 border-b border-zinc-200">
+                        <th className="px-6 py-3 text-[12px] font-medium text-zinc-500 uppercase tracking-wider">{t("dashboard.recentPRs.colIdentifier")}</th>
+                        <th className="px-6 py-3 text-[12px] font-medium text-zinc-500 uppercase tracking-wider">{t("dashboard.recentPRs.colFindings")}</th>
+                        <th className="px-6 py-3 text-[12px] font-medium text-zinc-500 uppercase tracking-wider text-right">{t("dashboard.recentPRs.colStatus")}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100">
+                      {recentRuns.map((run) => (
+                        <tr key={run.id} className="hover:bg-zinc-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <Link to={`/runs/${run.id}`} className="flex flex-col hover:underline">
+                              <span className="font-mono text-sm font-semibold text-zinc-950">PR-{run.pr_number}</span>
+                              <span className="text-xs text-zinc-500 truncate max-w-[180px]">{run.project.github_repo_full_name}</span>
+                            </Link>
+                          </td>
+                          <td className="px-6 py-4">
+                            {run.status === "running" || run.status === "queued" ? (
+                              <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[16px] text-zinc-400 animate-pulse">sync</span>
+                                <span className="font-mono text-[11px] text-zinc-500 italic">{t("dashboard.recentPRs.processing")}</span>
+                              </div>
+                            ) : (
+                              <span className="font-mono text-[11px] text-zinc-500">
+                                {new Date(run.created_at).toLocaleString()}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <RunStatusBadge status={run.status} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </section>
+
+            {/* Health */}
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold tracking-tight text-zinc-950">{t("dashboard.health.title")}</h2>
+                <a href={installUrl} className="p-1 text-zinc-400 hover:text-zinc-950 transition-colors">
+                  <span className="material-symbols-outlined text-[18px]">add</span>
+                </a>
+              </div>
+
+              <div className="bg-white border border-zinc-200 rounded-lg p-1">
+                <div className="space-y-1">
+                  {healthProjects.length === 0 ? (
+                    <p className="px-3 py-6 text-center text-sm text-zinc-500">{t("dashboard.health.noProjects")}</p>
+                  ) : (
+                    healthProjects.map(({ project, lastRun }) => {
+                      const { label, colorClass, pct, icon } = healthStatus(lastRun?.status);
+                      return (
+                        <Link
+                          key={project.id}
+                          to={`/projects/${project.id}/runs`}
+                          className="flex items-center justify-between p-3 hover:bg-zinc-50 transition-all rounded group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded border border-zinc-100 flex items-center justify-center bg-zinc-50 flex-shrink-0">
+                              <span className="material-symbols-outlined text-zinc-400 text-sm">{icon}</span>
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-sm font-semibold text-zinc-950 truncate max-w-[110px]">
+                                {project.github_repo_full_name.split("/")[1]}
+                              </span>
+                              <span className={`text-[10px] font-mono ${colorClass}`}>{label}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="text-[10px] font-mono text-zinc-400">{pct}%</span>
+                            <div className="w-16 h-1 bg-zinc-100 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${pct >= 90 ? "bg-emerald-500" : pct >= 70 ? "bg-zinc-400" : "bg-red-500"}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    })
+                  )}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{project.github_repo_full_name}</p>
-                  <p className="text-xs text-white/40 mt-0.5">
-                    {project.default_branch} · {project.enabled_specialists.join(", ")}
-                  </p>
+
+                {/* Mini terminal */}
+                <div className="mt-4 p-4 bg-zinc-950 rounded-md">
+                  <p className="text-[10px] font-mono text-zinc-500 mb-2 uppercase tracking-widest">{t("dashboard.health.shellLabel")}</p>
+                  <div className="font-mono text-[12px] text-zinc-300 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-emerald-500">$</span>
+                      <span>codeshield scan --target {latestProject}</span>
+                    </div>
+                    {totalRuns > 0 ? (
+                      <>
+                        <div className="text-zinc-500">{t("dashboard.health.shellDone", { count: totalRuns })}</div>
+                        <div className="text-emerald-400">{t("dashboard.health.shellResult")}</div>
+                      </>
+                    ) : (
+                      <div className="text-zinc-600 italic">{t("dashboard.health.shellIdle")}</div>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-4 flex-shrink-0 ml-4">
-                <span className={`text-xs px-2 py-0.5 rounded-full border ${severityColor(project.severity_threshold)}`}>
-                  {project.severity_threshold}
-                </span>
-                <svg className="w-4 h-4 text-white/20 group-hover:text-white/40 transition-colors" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </main>
+            </section>
+
+          </div>
+        </main>
+      </div>
+
+      {/* FAB */}
+      <a
+        href={installUrl}
+        className="fixed bottom-8 right-8 w-12 h-12 bg-zinc-950 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform active:scale-95 z-50"
+        title={t("dashboard.installCta")}
+      >
+        <span className="material-symbols-outlined">add</span>
+      </a>
+
     </div>
   );
 }
 
-function severityColor(level: string): string {
-  switch (level) {
-    case "critical": return "text-red-400 border-red-500/30 bg-red-500/10";
-    case "high": return "text-orange-400 border-orange-500/30 bg-orange-500/10";
-    case "medium": return "text-yellow-400 border-yellow-500/30 bg-yellow-500/10";
-    default: return "text-white/40 border-white/10 bg-white/5";
+function StatCard({
+  label,
+  value,
+  icon,
+  sub,
+  highlight,
+}: {
+  label: string;
+  value: string | number;
+  icon: string;
+  sub: string;
+  highlight?: "critical" | "normal";
+}) {
+  return (
+    <div
+      className={`bg-white border border-zinc-200 p-5 rounded-lg flex flex-col justify-between hover:border-zinc-400 transition-colors ${
+        highlight === "critical" ? "border-l-4 border-l-red-500" : ""
+      }`}
+    >
+      <div>
+        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-1">{label}</p>
+        <h3 className={`font-mono text-3xl font-bold ${highlight === "critical" ? "text-red-600" : "text-zinc-950"}`}>
+          {value}
+        </h3>
+      </div>
+      <div className={`mt-4 flex items-center text-[10px] font-mono ${highlight === "critical" ? "text-red-500 font-semibold" : "text-zinc-400"}`}>
+        <span className="material-symbols-outlined text-[14px] mr-1">{icon}</span>
+        {sub}
+      </div>
+    </div>
+  );
+}
+
+function RunStatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    completed: { label: "PASS", cls: "bg-emerald-50 text-emerald-700 border border-emerald-100" },
+    failed: { label: "FAIL", cls: "bg-red-50 text-red-700 border border-red-100" },
+    running: { label: "RUNNING", cls: "bg-blue-50 text-blue-700 border border-blue-100" },
+    queued: { label: "QUEUED", cls: "bg-zinc-100 text-zinc-600 border border-zinc-200" },
+    cancelled: { label: "CANCELLED", cls: "bg-zinc-100 text-zinc-500 border border-zinc-200" },
+  };
+  const { label, cls } = map[status] ?? { label: status.toUpperCase(), cls: "bg-zinc-100 text-zinc-600 border border-zinc-200" };
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-mono font-medium ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
+function healthStatus(status?: string): { label: string; colorClass: string; pct: number; icon: string } {
+  switch (status) {
+    case "completed": return { label: "Healthy", colorClass: "text-emerald-600", pct: 98, icon: "terminal" };
+    case "running":
+    case "queued":   return { label: "Scanning...", colorClass: "text-blue-500", pct: 50, icon: "sync" };
+    case "failed":   return { label: "Review Required", colorClass: "text-zinc-500", pct: 64, icon: "cloud" };
+    default:         return { label: "No data yet", colorClass: "text-zinc-400", pct: 0, icon: "integration_instructions" };
   }
 }

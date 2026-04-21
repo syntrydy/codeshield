@@ -17,7 +17,48 @@
     "installSuccess": "GitHub App installed successfully. Your repositories will appear below.",
     "defaultBranch": "Default branch",
     "specialists": "Specialists",
-    "threshold": "Severity threshold"
+    "threshold": "Severity threshold",
+    "version": "v1.0.0",
+    "breadcrumb": "Overview / Dashboard",
+    "searchPlaceholder": "Search resources...",
+    "nav": {
+      "projects": "Projects",
+      "pullRequests": "Pull Requests",
+      "settings": "Settings",
+      "docs": "Docs",
+      "systemStatus": "System Status",
+      "logOut": "Log out"
+    },
+    "stats": {
+      "totalProjects": "Total Projects",
+      "totalProjectsSub": "active repositories",
+      "pendingReviews": "Pending Reviews",
+      "pendingReviewsSub": "awaiting specialist analysis",
+      "totalRuns": "Total Runs",
+      "totalRunsSub": "completed reviews",
+      "totalCost": "Total Cost",
+      "totalCostSub": "AI review spend"
+    },
+    "recentPRs": {
+      "title": "Recent Pull Requests",
+      "colIdentifier": "Identifier",
+      "colFindings": "Specialist Findings",
+      "colStatus": "Status",
+      "processing": "Processing analysis...",
+      "noRuns": "No runs yet. Install the GitHub App to get started."
+    },
+    "health": {
+      "title": "Health",
+      "healthy": "Healthy",
+      "scanning": "Scanning...",
+      "reviewRequired": "Review Required",
+      "noData": "No data yet",
+      "noProjects": "No projects connected.",
+      "shellLabel": "Active Shell",
+      "shellDone": "Scanned {{count}} runs. DONE.",
+      "shellResult": "Analysis complete.",
+      "shellIdle": "Waiting for first PR review..."
+    }
   },
   "runs": {
     "title": "Runs",
