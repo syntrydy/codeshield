@@ -78,7 +78,6 @@ export function DashboardPage() {
             </div>
             <div>
               <h1 className="text-xl font-black text-zinc-950 tracking-tighter">CodeShield</h1>
-              <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">{t("dashboard.version")}</p>
             </div>
           </div>
         </div>
