@@ -13,6 +13,9 @@ class ReviewState(TypedDict):
     pr_base_sha: str
     locale: Literal["en", "fr"]
     enabled_specialists: list[str]
+    github_installation_id: int | None
+    repo_full_name: str
+    severity_threshold: str
 
     # ── Planner output ────────────────────────────────────────────────────────
     plan: dict | None          # {change_type, focus_areas, skip_specialists}

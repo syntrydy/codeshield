@@ -12,6 +12,7 @@ def test_all_required_keys_present() -> None:
         "locale", "enabled_specialists", "plan", "changed_files",
         "findings", "specialist_errors", "final_review",
         "total_input_tokens", "total_output_tokens",
+        "github_installation_id", "repo_full_name", "severity_threshold",
     }
     assert set(ReviewState.__annotations__) == expected_keys
 
@@ -50,6 +51,8 @@ def test_state_construction() -> None:
         "findings": [], "specialist_errors": [],
         "final_review": None,
         "total_input_tokens": 0, "total_output_tokens": 0,
+        "github_installation_id": None, "repo_full_name": "owner/repo",
+        "severity_threshold": "low",
     }
     assert state["locale"] == "en"
     assert state["findings"] == []
