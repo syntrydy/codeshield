@@ -70,7 +70,7 @@ export function SignInPage() {
       <main className="flex-1 flex flex-col items-center justify-center text-center px-6 pt-28 pb-20">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs text-white/60 mb-8">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          Powered by Claude Sonnet · 4 specialist agents
+          4 specialist agents · AI-powered code review
         </div>
 
         <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-white max-w-3xl leading-[1.1]">
@@ -134,7 +134,7 @@ export function SignInPage() {
       <footer className="border-t border-white/[0.06] py-6 px-6">
         <div className="max-w-6xl mx-auto flex items-center justify-between text-xs text-white/30">
           <span>© 2026 CodeShield</span>
-          <span>Built with Claude Sonnet · LangGraph · Supabase</span>
+          <span>LangGraph · Supabase · FastAPI</span>
         </div>
       </footer>
     </div>
