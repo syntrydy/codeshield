@@ -6,7 +6,7 @@ import os
 # Tests that need a specific value (e.g. jwt secret) override via monkeypatch.setattr.
 _TEST_ENV = {
     "SUPABASE_URL": "https://test.supabase.co",
-    "SUPABASE_ANON_KEY": "test-anon-key",
+    "SUPABASE_PUBLISHABLE_KEY": "test-publishable-key",
     "SUPABASE_SERVICE_ROLE_KEY": "test-service-role-key",
     "SUPABASE_JWT_SECRET": "test-jwt-secret",
     "GITHUB_APP_ID": "12345",

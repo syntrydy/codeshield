@@ -1,4 +1,4 @@
-"""Supabase client factories — anon client for user-facing reads, service-role for worker writes."""
+"""Supabase client factories — publishable-key client for user-facing reads, service-role for worker writes."""
 
 from functools import lru_cache
 
@@ -9,9 +9,9 @@ from app.core.config import get_settings
 
 @lru_cache
 def get_anon_client() -> Client:
-    """Returns a client authenticated with the anon key (subject to RLS)."""
+    """Returns a client authenticated with the publishable key (subject to RLS)."""
     settings = get_settings()
-    return create_client(settings.supabase_url, settings.supabase_anon_key)
+    return create_client(settings.supabase_url, settings.supabase_publishable_key)
 
 
 @lru_cache
