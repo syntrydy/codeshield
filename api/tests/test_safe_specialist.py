@@ -13,19 +13,26 @@ _BASE_STATE: ReviewState = {
     "plan": None, "changed_files": [],
     "findings": [], "specialist_errors": [],
     "final_review": None,
+    "total_input_tokens": 0, "total_output_tokens": 0,
+    "github_installation_id": None, "repo_full_name": "owner/repo",
+    "severity_threshold": "low",
 }
 
 
 def test_happy_path_returns_findings_key() -> None:
-    node = safe_specialist("security")
-    result = node(_BASE_STATE)
+    stub = {"findings": [], "specialist_errors": [], "total_input_tokens": 0, "total_output_tokens": 0}
+    with patch("app.graph.nodes._run_specialist", return_value=stub):
+        node = safe_specialist("security")
+        result = node(_BASE_STATE)
     assert "findings" in result
     assert isinstance(result["findings"], list)
 
 
 def test_happy_path_returns_no_errors() -> None:
-    node = safe_specialist("security")
-    result = node(_BASE_STATE)
+    stub = {"findings": [], "specialist_errors": [], "total_input_tokens": 0, "total_output_tokens": 0}
+    with patch("app.graph.nodes._run_specialist", return_value=stub):
+        node = safe_specialist("security")
+        result = node(_BASE_STATE)
     assert result.get("specialist_errors", []) == []
 
 
