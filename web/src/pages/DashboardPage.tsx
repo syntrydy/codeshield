@@ -64,9 +64,6 @@ export function DashboardPage() {
             href={`https://github.com/apps/${import.meta.env.VITE_GITHUB_APP_SLUG}/installations/new`}
             className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-white text-black rounded-lg hover:bg-white/90 transition-all"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
             {t("dashboard.installCta")}
           </a>
         </div>
