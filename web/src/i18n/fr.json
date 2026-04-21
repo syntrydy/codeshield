@@ -48,6 +48,18 @@
       "processing": "Analyse en cours...",
       "noRuns": "Aucune exécution. Installez l'application GitHub pour commencer."
     },
+    "install": {
+      "headline": "Connectez votre premier dépôt",
+      "subtext": "CodeShield examine chaque pull request automatiquement — détectant les bugs, failles de sécurité et régressions avant qu'ils n'atteignent la production.",
+      "cta": "Installer l'application GitHub",
+      "stepsTitle": "Commencer en trois étapes",
+      "step1Title": "Installer l'application GitHub",
+      "step1Desc": "Autorisez CodeShield sur les dépôts que vous souhaitez protéger.",
+      "step2Title": "Ouvrir ou mettre à jour une pull request",
+      "step2Desc": "Poussez une branche et ouvrez une PR — CodeShield se déclenche automatiquement.",
+      "step3Title": "Obtenir les résultats de revue par IA",
+      "step3Desc": "Les agents spécialisés analysent votre code et publient des commentaires en quelques secondes."
+    },
     "health": {
       "title": "Santé",
       "healthy": "Sain",

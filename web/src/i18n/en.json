@@ -48,6 +48,18 @@
       "processing": "Processing analysis...",
       "noRuns": "No runs yet. Install the GitHub App to get started."
     },
+    "install": {
+      "headline": "Connect your first repository",
+      "subtext": "CodeShield reviews every pull request automatically — catching bugs, security issues, and performance regressions before they reach production.",
+      "cta": "Install GitHub App",
+      "stepsTitle": "Get started in three steps",
+      "step1Title": "Install the GitHub App",
+      "step1Desc": "Authorize CodeShield on the repositories you want to protect.",
+      "step2Title": "Open or update a pull request",
+      "step2Desc": "Push a branch and open a PR — CodeShield triggers automatically.",
+      "step3Title": "Get AI-powered review results",
+      "step3Desc": "Specialist agents analyze your code and post inline comments within seconds."
+    },
     "health": {
       "title": "Health",
       "healthy": "Healthy",

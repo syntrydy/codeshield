@@ -21,7 +21,7 @@ export function DashboardPage() {
     }
   }, [showInstallBanner, setSearchParams]);
 
-  const { data: projects, isError: projectsError } = useQuery({
+  const { data: projects, isLoading: projectsLoading, isError: projectsError } = useQuery({
     queryKey: ["projects"],
     queryFn: fetchProjects,
   });
@@ -168,6 +168,11 @@ export function DashboardPage() {
           </div>
         )}
 
+        {projectsLoading ? (
+          <LoadingSkeleton />
+        ) : projects !== undefined && projects.length === 0 ? (
+          <InstallScreen installUrl={installUrl} />
+        ) : (
         <main className="p-8 max-w-[1280px] w-full mx-auto space-y-8">
 
           {/* Stats */}
@@ -333,16 +338,19 @@ export function DashboardPage() {
 
           </div>
         </main>
+        )}
       </div>
 
-      {/* FAB */}
-      <a
-        href={installUrl}
-        className="fixed bottom-8 right-8 w-12 h-12 bg-zinc-950 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform active:scale-95 z-50"
-        title={t("dashboard.installCta")}
-      >
-        <span className="material-symbols-outlined">add</span>
-      </a>
+      {/* FAB — only when projects exist */}
+      {projects !== undefined && projects.length > 0 && (
+        <a
+          href={installUrl}
+          className="fixed bottom-8 right-8 w-12 h-12 bg-zinc-950 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform active:scale-95 z-50"
+          title={t("dashboard.installCta")}
+        >
+          <span className="material-symbols-outlined">add</span>
+        </a>
+      )}
 
     </div>
   );
@@ -405,4 +413,97 @@ function healthStatus(status?: string): { label: string; colorClass: string; pct
     case "failed":   return { label: "Review Required", colorClass: "text-zinc-500", pct: 64, icon: "cloud" };
     default:         return { label: "No data yet", colorClass: "text-zinc-400", pct: 0, icon: "integration_instructions" };
   }
+}
+
+function LoadingSkeleton() {
+  return (
+    <main className="p-8 max-w-[1280px] w-full mx-auto space-y-8 animate-pulse">
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="bg-white border border-zinc-200 p-5 rounded-lg space-y-3">
+            <div className="h-3 w-24 bg-zinc-100 rounded" />
+            <div className="h-8 w-16 bg-zinc-100 rounded" />
+            <div className="h-2 w-32 bg-zinc-100 rounded" />
+          </div>
+        ))}
+      </section>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 bg-white border border-zinc-200 rounded-lg p-6 space-y-3">
+          <div className="h-4 w-40 bg-zinc-100 rounded" />
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-10 bg-zinc-50 rounded" />
+          ))}
+        </div>
+        <div className="bg-white border border-zinc-200 rounded-lg p-6 space-y-3">
+          <div className="h-4 w-24 bg-zinc-100 rounded" />
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-12 bg-zinc-50 rounded" />
+          ))}
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function InstallScreen({ installUrl }: { installUrl: string }) {
+  const { t } = useTranslation();
+
+  const steps = [
+    { icon: "download", title: t("dashboard.install.step1Title"), desc: t("dashboard.install.step1Desc") },
+    { icon: "merge_type", title: t("dashboard.install.step2Title"), desc: t("dashboard.install.step2Desc") },
+    { icon: "auto_awesome", title: t("dashboard.install.step3Title"), desc: t("dashboard.install.step3Desc") },
+  ];
+
+  return (
+    <main className="flex-1 flex flex-col items-center justify-center px-6 py-16 min-h-[calc(100vh-3.5rem)]">
+      <div className="max-w-2xl w-full text-center space-y-8">
+
+        {/* Shield badge */}
+        <div className="flex justify-center">
+          <div className="w-16 h-16 bg-zinc-950 rounded-2xl flex items-center justify-center shadow-lg">
+            <span
+              className="material-symbols-outlined text-white text-3xl"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              shield
+            </span>
+          </div>
+        </div>
+
+        {/* Copy */}
+        <div className="space-y-3">
+          <h2 className="text-3xl font-black tracking-tighter text-zinc-950">{t("dashboard.install.headline")}</h2>
+          <p className="text-zinc-500 text-base leading-relaxed max-w-lg mx-auto">{t("dashboard.install.subtext")}</p>
+        </div>
+
+        {/* CTA */}
+        <a
+          href={installUrl}
+          className="inline-flex items-center gap-2 bg-zinc-950 text-white text-sm font-semibold px-6 py-3 rounded-lg hover:bg-zinc-800 transition-colors"
+        >
+          <span className="material-symbols-outlined text-[18px]">download</span>
+          {t("dashboard.install.cta")}
+        </a>
+
+        {/* Steps */}
+        <div className="pt-8 space-y-4">
+          <p className="text-xs font-mono text-zinc-400 uppercase tracking-widest">{t("dashboard.install.stepsTitle")}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
+            {steps.map((step, i) => (
+              <div key={i} className="bg-white border border-zinc-200 rounded-lg p-5 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-zinc-50 border border-zinc-200 rounded flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined text-zinc-500 text-[18px]">{step.icon}</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-zinc-400">0{i + 1}</span>
+                </div>
+                <p className="text-sm font-semibold text-zinc-950 tracking-tight">{step.title}</p>
+                <p className="text-xs text-zinc-500 leading-relaxed">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </main>
+  );
 }
