@@ -103,6 +103,10 @@ def review_pr(
             logger.warning("Failed to update Check Run to in_progress", extra={"run_id": run_id, "error": str(exc)})
 
     try:
+        # Fetch project settings before graph invocation — specialists need severity_threshold
+        project_resp = get_service_client().table("projects").select("severity_threshold").eq("id", project_id).maybe_single().execute()
+        severity_threshold: str = (project_resp.data or {}).get("severity_threshold", "low")
+
         state: ReviewState = {
             "run_id": run_id,
             "project_id": project_id,
@@ -111,6 +115,9 @@ def review_pr(
             "pr_base_sha": pr_base_sha,
             "locale": locale,  # type: ignore[typeddict-item]
             "enabled_specialists": enabled_specialists,
+            "github_installation_id": installation_id,
+            "repo_full_name": repo_full_name,
+            "severity_threshold": severity_threshold,
             "plan": None,
             "changed_files": [],
             "findings": [],
@@ -129,10 +136,6 @@ def review_pr(
         total_input = result.get("total_input_tokens", 0)
         total_output = result.get("total_output_tokens", 0)
         total_cost = _estimate_cost(total_input, total_output)
-
-        # Fetch project's severity_threshold for annotation filtering
-        project_resp = get_service_client().table("projects").select("severity_threshold").eq("id", project_id).maybe_single().execute()
-        severity_threshold = (project_resp.data or {}).get("severity_threshold", "low")
 
         _update_run_status(run_id, "completed", {
             "total_input_tokens": total_input,
