@@ -22,7 +22,7 @@
     "breadcrumb": "Overview / Dashboard",
     "searchPlaceholder": "Search resources...",
     "nav": {
-      "projects": "Projects",
+      "projects": "Home",
       "pullRequests": "Pull Requests",
       "settings": "Settings",
       "docs": "Docs",
