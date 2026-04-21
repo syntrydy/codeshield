@@ -160,3 +160,12 @@ Claude Code should update this section at the end of each working session with w
 - **Day 7:** Complete. `web/Dockerfile` (nginx multi-stage) + `nginx.conf` (SPA fallback). `docker-compose.yml` updated with Vite dev web service. `buildspec/build-deploy.yml` implemented (ECR push + ECS rolling deploy + smoke test). `buildspec/terraform.yml` implemented (plan on PR, apply on main). Two eval fixtures (SQL injection, null dereference). `evals/run.py` runner with recall/precision/FP/verdict scoring and CI gates. Terraform skeleton: `main.tf`, `variables.tf`, `outputs.tf`, 6 modules (VPC, ECR, Redis, ALB, ECS, Secrets, S3) — `terraform validate` passes.
 
 - **Day 8:** Complete. Makefile expanded (eval, lint, type-check, infra targets). `scripts/register-app.sh` for one-time GitHub App registration. All pre-existing ruff lint errors fixed (41 tests still passing). Install success banner on DashboardPage (`?installed=1`). README expanded with GitHub App setup, CI/CD wiring, infra, eval, and project structure sections. Duplicate root-level buildspec files removed.
+
+- **Post Day-8 wiring session:** Complete. Full LLM pipeline wired end-to-end:
+  - `api/app/graph/tools.py` — 5 `@tool` functions (`get_pr_metadata`, `get_changed_files`, `get_file_content`, `get_diff`, `get_adjacent_code`) with `contextvars` credential threading via `set_github_context()`.
+  - `api/app/graph/state.py` — added `github_installation_id`, `repo_full_name`, `severity_threshold` fields.
+  - `api/app/graph/nodes.py` — replaced all stubs with real Claude Sonnet calls: `planner_node` (JSON plan parse with fallback), `_run_specialist` (ReAct loop, 6-iteration cap, tool binding), `aggregator_node` (dedup/verdict).
+  - `api/app/worker/tasks.py` — passes all three new fields into initial `ReviewState`; fetches `severity_threshold` from Supabase *before* graph invocation.
+  - `api/app/graph/prompts.py` + `api/scripts/seed_prompts.py` — production-quality prompts for all 6 agents with locale, severity threshold, and JSON output format instructions.
+  - 22 new tests (tools + nodes), all mocked at boundary. Suite: 63 tests passing.
+  - **Next:** end-to-end smoke test — requires filling in `.env` (Supabase, GitHub App, Anthropic, LangSmith), running `make up`, and opening a real PR against an App-installed repo.
