@@ -14,7 +14,8 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/sign-in" element={<SignInPage />} />
+            <Route path="/" element={<SignInPage />} />
+            <Route path="/sign-in" element={<Navigate to="/" replace />} />
             <Route
               path="/dashboard"
               element={
@@ -39,7 +40,7 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>
