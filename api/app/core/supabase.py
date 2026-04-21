@@ -21,4 +21,4 @@ def get_service_client() -> Client:
     Must only be used inside Celery workers — never passed to or called from browser-facing code.
     """
     settings = get_settings()
-    return create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return create_client(settings.supabase_url, settings.supabase_secret_key)
