@@ -8,7 +8,6 @@ _TEST_ENV = {
     "SUPABASE_URL": "https://test.supabase.co",
     "SUPABASE_PUBLISHABLE_KEY": "test-publishable-key",
     "SUPABASE_SECRET_KEY": "test-secret-key",
-    "SUPABASE_JWT_SECRET": "test-jwt-secret",
     "GITHUB_APP_ID": "12345",
     "GITHUB_APP_SLUG": "test-app",
     "GITHUB_WEBHOOK_SECRET": "test-webhook-secret",

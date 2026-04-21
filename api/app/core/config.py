@@ -14,7 +14,6 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_publishable_key: str
     supabase_secret_key: str
-    supabase_jwt_secret: str
 
     # GitHub App
     github_app_id: int
