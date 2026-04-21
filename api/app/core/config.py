@@ -29,6 +29,7 @@ class Settings(BaseSettings):
 
     # LangSmith
     langsmith_api_key: str
+    langsmith_endpoint: str = "https://api.smith.langchain.com"
     langsmith_project: str = "code-review-dev"
     langchain_tracing_v2: bool = True
 
