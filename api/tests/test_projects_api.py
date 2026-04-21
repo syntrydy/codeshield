@@ -22,7 +22,7 @@ _PUBLIC_JWK: dict = {**json.loads(ECAlgorithm.to_jwk(_PRIVATE_KEY.public_key()))
 
 def _make_token(user_id: str = _USER_ID) -> str:
     return jwt.encode(
-        {"sub": user_id, "exp": int(time.time()) + 3600},
+        {"sub": user_id, "exp": int(time.time()) + 3600, "aud": "authenticated"},
         _PRIVATE_KEY,
         algorithm="ES256",
     )

@@ -73,6 +73,7 @@ def _decode_token(token: str) -> dict[str, Any]:
                 token,
                 public_key,  # type: ignore[arg-type]
                 algorithms=algorithms,
+                audience="authenticated",
                 options={"require": ["sub", "exp"]},
             )
         except jwt.ExpiredSignatureError:
