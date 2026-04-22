@@ -131,3 +131,79 @@ async def test_update_project_empty_body_returns_422(fake_anon_client: MagicMock
                 headers={"Authorization": f"Bearer {_make_token()}"},
             )
     assert resp.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_update_project_invalid_specialist_returns_422(fake_anon_client: MagicMock) -> None:
+    with patch("app.api.projects.get_service_client", return_value=fake_anon_client):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.patch(
+                f"/projects/{_PROJECT['id']}",
+                json={"enabled_specialists": ["invalid_specialist"]},
+                headers={"Authorization": f"Bearer {_make_token()}"},
+            )
+    assert resp.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_update_project_empty_specialists_returns_422(fake_anon_client: MagicMock) -> None:
+    with patch("app.api.projects.get_service_client", return_value=fake_anon_client):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.patch(
+                f"/projects/{_PROJECT['id']}",
+                json={"enabled_specialists": []},
+                headers={"Authorization": f"Bearer {_make_token()}"},
+            )
+    assert resp.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_stats_returns_zero_when_no_runs() -> None:
+    client_mock = MagicMock()
+    # Runs query returns empty list
+    client_mock.table.return_value.select.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+    with patch("app.api.projects.get_service_client", return_value=client_mock):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.get("/projects/stats", headers={"Authorization": f"Bearer {_make_token()}"})
+    assert resp.status_code == 200
+    assert resp.json() == {"total_findings": 0, "critical_findings": 0}
+
+
+@pytest.mark.anyio
+async def test_stats_counts_findings_correctly() -> None:
+    _RUN_ID = "aaaaaaaa-0000-0000-0000-000000000001"
+    client_mock = MagicMock()
+
+    # Table routing: runs → return run IDs; findings → return counts
+    runs_chain = MagicMock()
+    runs_chain.execute.return_value = MagicMock(data=[{"id": _RUN_ID}])
+    runs_chain.select.return_value = runs_chain
+    runs_chain.eq.return_value = runs_chain
+
+    total_chain = MagicMock()
+    total_chain.execute.return_value = MagicMock(count=5)
+    total_chain.select.return_value = total_chain
+    total_chain.in_.return_value = total_chain
+
+    critical_chain = MagicMock()
+    critical_chain.execute.return_value = MagicMock(count=2)
+    critical_chain.select.return_value = critical_chain
+    critical_chain.in_.return_value = critical_chain
+
+    call_count = {"n": 0}
+
+    def _table_side_effect(name: str) -> MagicMock:
+        if name == "runs":
+            return runs_chain
+        # First findings call → total, second → critical
+        call_count["n"] += 1
+        return total_chain if call_count["n"] == 1 else critical_chain
+
+    client_mock.table.side_effect = _table_side_effect
+
+    with patch("app.api.projects.get_service_client", return_value=client_mock):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.get("/projects/stats", headers={"Authorization": f"Bearer {_make_token()}"})
+
+    assert resp.status_code == 200
+    assert resp.json() == {"total_findings": 5, "critical_findings": 2}

@@ -1,11 +1,11 @@
 """CRUD endpoints for projects (connected repositories) — requires authenticated user."""
 
 import logging
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.core.auth import current_user_id
 from app.core.supabase import get_service_client
@@ -27,10 +27,25 @@ class ProjectResponse(BaseModel):
     created_at: str
 
 
+_Specialist = Literal["security", "correctness", "performance", "style"]
+
+
 class ProjectUpdateRequest(BaseModel):
-    enabled_specialists: list[Literal["security", "correctness", "performance", "style"]] | None = None
+    enabled_specialists: Annotated[list[_Specialist], ...] | None = None
     severity_threshold: Literal["info", "low", "medium", "high", "critical"] | None = None
     review_output_locale: Literal["en", "fr"] | None = None
+
+    @field_validator("enabled_specialists")
+    @classmethod
+    def at_least_one_specialist(cls, v: list[_Specialist] | None) -> list[_Specialist] | None:
+        if v is not None and len(v) == 0:
+            raise ValueError("at least one specialist must remain enabled")
+        return v
+
+
+class UserStats(BaseModel):
+    total_findings: int
+    critical_findings: int
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -47,6 +62,33 @@ def list_projects(user_id: str = Depends(current_user_id)) -> list[dict]:  # typ
         .execute()
     )
     return resp.data  # type: ignore[return-value]
+
+
+@router.get("/stats", response_model=UserStats)
+def get_user_stats(user_id: str = Depends(current_user_id)) -> dict:  # type: ignore[type-arg]
+    """Return aggregate finding counts across all runs owned by the authenticated user."""
+    client = get_service_client()
+    runs_resp = client.table("runs").select("id").eq("user_id", user_id).execute()
+    run_ids = [r["id"] for r in (runs_resp.data or [])]
+    if not run_ids:
+        return {"total_findings": 0, "critical_findings": 0}
+    total_resp = (
+        client.table("findings")
+        .select("id", count="exact")
+        .in_("run_id", run_ids)
+        .execute()
+    )
+    critical_resp = (
+        client.table("findings")
+        .select("id", count="exact")
+        .in_("run_id", run_ids)
+        .in_("severity", ["critical", "high"])
+        .execute()
+    )
+    return {
+        "total_findings": total_resp.count or 0,
+        "critical_findings": critical_resp.count or 0,
+    }
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
