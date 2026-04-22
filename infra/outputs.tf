@@ -32,3 +32,18 @@ output "artifacts_bucket" {
   description = "S3 bucket for PR diff artifacts"
   value       = module.s3.artifacts_bucket_name
 }
+
+output "cloudfront_domain" {
+  description = "CloudFront distribution domain name (use as CNAME target for your frontend subdomain)"
+  value       = module.cloudfront.cloudfront_domain
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID (needed by CI to invalidate the cache after deploy)"
+  value       = module.cloudfront.distribution_id
+}
+
+output "frontend_bucket" {
+  description = "S3 bucket that holds the built frontend assets"
+  value       = module.cloudfront.frontend_bucket_name
+}

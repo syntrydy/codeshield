@@ -30,3 +30,15 @@ variable "image_tag" {
   type        = string
   default     = "latest"
 }
+
+variable "cloudfront_certificate_arn" {
+  description = "ACM certificate ARN for the CloudFront frontend (must be in us-east-1). Null = use the default cloudfront.net domain."
+  type        = string
+  default     = null
+}
+
+variable "cloudfront_domain" {
+  description = "Custom subdomain for the frontend (e.g. app.yourdomain.com). Requires cloudfront_certificate_arn."
+  type        = string
+  default     = null
+}

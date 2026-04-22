@@ -13,3 +13,11 @@ acm_certificate_arn = "arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERT_ID"
 
 # Docker image tag to deploy. In CI this is set to the commit SHA automatically.
 image_tag = "latest"
+
+# Optional: custom subdomain for the React frontend via CloudFront.
+# Without these the frontend is reachable at the cloudfront.net domain printed
+# by 'terraform output cloudfront_domain'.
+# Run scripts/request-cert.sh to get the ARN, then add a CNAME at your DNS
+# provider pointing cloudfront_domain → the value from terraform output.
+# cloudfront_certificate_arn = "arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERT_ID"
+# cloudfront_domain          = "app.yourdomain.com"

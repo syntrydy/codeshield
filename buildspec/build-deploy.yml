@@ -1,10 +1,17 @@
 # buildspec/build-deploy.yml
 # Trigger: push to main (CodeBuild project: build-deploy)
-# Builds api and web Docker images, pushes to ECR, triggers ECS rolling deploy.
+# Builds the API Docker image, pushes to ECR, triggers ECS rolling deploy.
+# Builds the React frontend, syncs to S3, invalidates CloudFront cache.
 #
 # Required CodeBuild environment variables (set in the project, not here):
-#   AWS_ACCOUNT_ID, AWS_REGION, ECR_REPO_API, ECR_REPO_WEB,
+#   AWS_ACCOUNT_ID, AWS_REGION
+#   ECR_REPO_API                   — ECR repo name for the API/worker image
 #   ECS_CLUSTER, ECS_SERVICE_API, ECS_SERVICE_WORKER
+#   FRONTEND_BUCKET                — S3 bucket name (from terraform output frontend_bucket)
+#   CF_DIST_ID                     — CloudFront distribution ID (from terraform output cloudfront_distribution_id)
+#   API_HEALTH_URL                 — base URL of the deployed API for smoke test
+#   VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY
+#   VITE_API_BASE_URL, VITE_GITHUB_APP_SLUG
 version: 0.2
 
 env:
@@ -17,30 +24,50 @@ phases:
       - echo "Logging in to Amazon ECR..."
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
       - API_REPO=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_API
-      - WEB_REPO=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_WEB
 
   build:
     commands:
-      # Build API image (shared by both api and worker services)
+      # ── API Docker image (shared by api + worker ECS services) ───────────────
       - echo "Building API image..."
       - docker build -t $API_REPO:$IMAGE_TAG -t $API_REPO:latest ./api
-      # Build Web image
-      - echo "Building Web image..."
-      - docker build
-          --build-arg VITE_SUPABASE_URL=$VITE_SUPABASE_URL
-          --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
-          --build-arg VITE_API_BASE_URL=$VITE_API_BASE_URL
-          --build-arg VITE_GITHUB_APP_SLUG=$VITE_GITHUB_APP_SLUG
-          -t $WEB_REPO:$IMAGE_TAG -t $WEB_REPO:latest ./web
+
+      # ── React frontend ────────────────────────────────────────────────────────
+      - echo "Building frontend..."
+      - cd web
+      - npm ci
+      - VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+        VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
+        VITE_API_BASE_URL=$VITE_API_BASE_URL
+        VITE_GITHUB_APP_SLUG=$VITE_GITHUB_APP_SLUG
+        npm run build
+      - cd ..
 
   post_build:
     commands:
-      - echo "Pushing images to ECR..."
+      # ── Push API image ────────────────────────────────────────────────────────
+      - echo "Pushing API image to ECR..."
       - docker push $API_REPO:$IMAGE_TAG
       - docker push $API_REPO:latest
-      - docker push $WEB_REPO:$IMAGE_TAG
-      - docker push $WEB_REPO:latest
 
+      # ── Deploy frontend to S3 + CloudFront ────────────────────────────────────
+      - echo "Syncing frontend assets to S3..."
+      # Hashed assets (JS/CSS bundles): long-lived immutable cache
+      - aws s3 sync web/dist/assets/ s3://$FRONTEND_BUCKET/assets/
+          --delete
+          --cache-control "public,max-age=31536000,immutable"
+          --region $AWS_REGION
+      # index.html and other HTML: never cache so users always get the latest shell
+      - aws s3 sync web/dist/ s3://$FRONTEND_BUCKET/
+          --delete
+          --exclude "assets/*"
+          --cache-control "no-cache,no-store,must-revalidate"
+          --region $AWS_REGION
+      - echo "Invalidating CloudFront cache..."
+      - aws cloudfront create-invalidation
+          --distribution-id $CF_DIST_ID
+          --paths "/*"
+
+      # ── ECS rolling deploys ───────────────────────────────────────────────────
       - echo "Triggering ECS rolling deploys..."
       - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE_API    --force-new-deployment --region $AWS_REGION
       - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE_WORKER --force-new-deployment --region $AWS_REGION

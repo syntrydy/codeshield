@@ -89,6 +89,15 @@ module "s3" {
   environment  = var.environment
 }
 
+# ── CloudFront + S3 frontend ───────────────────────────────────────────────────
+module "cloudfront" {
+  source = "./modules/cloudfront"
+
+  name_prefix     = local.name_prefix
+  certificate_arn = var.cloudfront_certificate_arn
+  domain          = var.cloudfront_domain
+}
+
 locals {
   name_prefix = "code-review-${var.environment}"
 }
