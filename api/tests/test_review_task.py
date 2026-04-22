@@ -1,6 +1,6 @@
 """Tests for the run_review task function.
 
-Mocks at the boundary: compiled_graph.invoke, get_service_client,
+Mocks at the boundary: compiled_graph.stream, get_service_client,
 create_check_run, update_check_run. No real LLM calls, no real Supabase
 connection, no broker required.
 """
@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.worker.tasks import _estimate_cost, run_review
+from app.worker.tasks import _estimate_cost, _insert_findings, run_review
 
 
 _RUN_ID = "run-00000001"
@@ -61,6 +61,40 @@ def _graph_result(
     }
 
 
+# ── _insert_findings ─────────────────────────────────────────────────────────
+
+def test_insert_findings_skips_empty_list() -> None:
+    """No DB call when findings list is empty."""
+    with patch("app.core.supabase.get_service_client") as mock_sb:
+        _insert_findings(_RUN_ID, [])
+        mock_sb.assert_not_called()
+
+
+def test_insert_findings_writes_all_fields() -> None:
+    client = MagicMock()
+    client.table.return_value.insert.return_value.execute.return_value = MagicMock(data=[])
+    finding = {
+        "specialist": "security",
+        "severity": "critical",
+        "title": "SQL injection",
+        "explanation": "Unsanitised input",
+        "file_path": "api/users.py",
+        "line_start": 5,
+        "line_end": 5,
+        "suggested_fix": "Use parameterised queries",
+        "confidence": "high",
+    }
+    with patch("app.core.supabase.get_service_client", return_value=client):
+        _insert_findings(_RUN_ID, [finding])
+
+    rows = client.table.return_value.insert.call_args[0][0]
+    assert len(rows) == 1
+    assert rows[0]["run_id"] == _RUN_ID
+    assert rows[0]["specialist"] == "security"
+    assert rows[0]["severity"] == "critical"
+    assert rows[0]["file_path"] == "api/users.py"
+
+
 # ── _estimate_cost ────────────────────────────────────────────────────────────
 
 def test_estimate_cost_zero_tokens() -> None:
@@ -94,7 +128,7 @@ def test_review_pr_returns_run_id_verdict_and_count(
     _mock_verdict, _mock_ann, mock_update_cr, mock_create_cr, mock_sb, mock_graph
 ) -> None:
     mock_sb.return_value = _make_sb_mock("medium")
-    mock_graph.invoke.return_value = _graph_result()
+    mock_graph.stream.return_value = iter([_graph_result()])
 
     result = run_review(
         run_id=_RUN_ID,
@@ -123,7 +157,7 @@ def test_review_pr_invokes_graph_with_correct_state(
     _mock_verdict, _mock_ann, _mock_update, _mock_create, mock_sb, mock_graph
 ) -> None:
     mock_sb.return_value = _make_sb_mock("high")
-    mock_graph.invoke.return_value = _graph_result(verdict="approve", findings=[])
+    mock_graph.stream.return_value = iter([_graph_result(verdict="approve", findings=[])])
 
     run_review(
         run_id=_RUN_ID,
@@ -137,8 +171,8 @@ def test_review_pr_invokes_graph_with_correct_state(
         enabled_specialists=["security", "style"],
     )
 
-    mock_graph.invoke.assert_called_once()
-    state = mock_graph.invoke.call_args[0][0]
+    mock_graph.stream.assert_called_once()
+    state = mock_graph.stream.call_args[0][0]
     assert state["run_id"] == _RUN_ID
     assert state["locale"] == "fr"
     assert state["severity_threshold"] == "high"
@@ -158,7 +192,7 @@ def test_review_pr_creates_and_completes_check_run(
     _mock_verdict, _mock_ann, mock_update_cr, mock_create_cr, mock_sb, mock_graph
 ) -> None:
     mock_sb.return_value = _make_sb_mock()
-    mock_graph.invoke.return_value = _graph_result()
+    mock_graph.stream.return_value = iter([_graph_result()])
 
     run_review(
         run_id=_RUN_ID,
@@ -196,7 +230,7 @@ def test_review_pr_check_run_failure_is_nonfatal(
     _mock_verdict, _mock_ann, _mock_update, mock_create_cr, mock_sb, mock_graph
 ) -> None:
     mock_sb.return_value = _make_sb_mock()
-    mock_graph.invoke.return_value = _graph_result(verdict="approve", findings=[])
+    mock_graph.stream.return_value = iter([_graph_result(verdict="approve", findings=[])])
 
     result = run_review(
         run_id=_RUN_ID,
@@ -211,7 +245,7 @@ def test_review_pr_check_run_failure_is_nonfatal(
     )
 
     # Graph still ran despite Check Run creation failure
-    mock_graph.invoke.assert_called_once()
+    mock_graph.stream.assert_called_once()
     assert result["run_id"] == _RUN_ID
 
 
@@ -227,7 +261,7 @@ def test_review_pr_graph_failure_re_raises_and_marks_check_run_failed(
     _mock_verdict, _mock_ann, mock_update_cr, _mock_create, mock_sb, mock_graph
 ) -> None:
     mock_sb.return_value = _make_sb_mock()
-    mock_graph.invoke.side_effect = RuntimeError("LLM timeout")
+    mock_graph.stream.side_effect = RuntimeError("LLM timeout")
 
     with pytest.raises(RuntimeError, match="LLM timeout"):
         run_review(
@@ -264,7 +298,7 @@ def test_review_pr_no_installation_skips_check_run(
     _mock_verdict, _mock_ann, _mock_update, mock_create_cr, mock_sb, mock_graph
 ) -> None:
     mock_sb.return_value = _make_sb_mock()
-    mock_graph.invoke.return_value = _graph_result()
+    mock_graph.stream.return_value = iter([_graph_result()])
 
     result = run_review(
         run_id=_RUN_ID,
@@ -280,3 +314,79 @@ def test_review_pr_no_installation_skips_check_run(
 
     mock_create_cr.assert_not_called()
     assert result["run_id"] == _RUN_ID
+
+
+# ── Findings are persisted to the DB ─────────────────────────────────────────
+
+@patch("app.worker.tasks._insert_findings")
+@patch("app.worker.tasks.compiled_graph")
+@patch("app.core.supabase.get_service_client")
+@patch("app.core.github.create_check_run", return_value=99)
+@patch("app.core.github.update_check_run")
+@patch("app.core.github.findings_to_annotations", return_value=[])
+@patch("app.core.github.map_verdict_to_conclusion", return_value="failure")
+def test_run_review_persists_findings_to_db(
+    _mock_verdict, _mock_ann, _mock_update, _mock_create, mock_sb, mock_graph, mock_insert
+) -> None:
+    mock_sb.return_value = _make_sb_mock()
+    expected_findings = [
+        {"title": "SQL injection", "severity": "critical", "specialist": "security",
+         "file_path": "api/users.py", "line_start": 5, "line_end": 5}
+    ]
+    mock_graph.stream.return_value = iter([_graph_result(findings=expected_findings)])
+
+    run_review(
+        run_id=_RUN_ID, project_id=_PROJECT_ID, installation_id=_INSTALLATION_ID,
+        repo_full_name=_REPO, pr_url=_PR_URL, pr_head_sha=_PR_HEAD, pr_base_sha=_PR_BASE,
+        locale="en", enabled_specialists=["security"],
+    )
+
+    mock_insert.assert_called_once_with(_RUN_ID, expected_findings)
+
+
+# ── Failed run saves partial cost ─────────────────────────────────────────────
+
+@patch("app.worker.tasks._update_run_status")
+@patch("app.worker.tasks._emit_event")
+@patch("app.worker.tasks.compiled_graph")
+@patch("app.core.supabase.get_service_client")
+@patch("app.core.github.create_check_run", return_value=55)
+@patch("app.core.github.update_check_run")
+def test_review_pr_graph_failure_saves_partial_cost(
+    _mock_update_cr, _mock_create, mock_sb, mock_graph, _mock_emit, mock_update_status
+) -> None:
+    """Tokens consumed before a mid-graph failure must be written to the DB."""
+    mock_sb.return_value = _make_sb_mock()
+
+    # Graph emits one chunk (tokens used) then raises on the next iteration
+    def _failing_stream(*_args, **_kwargs):
+        yield {"total_input_tokens": 50_000, "total_output_tokens": 10_000,
+               "findings": [], "specialist_errors": [], "final_review": None,
+               "plan": None, "changed_files": []}
+        raise RuntimeError("RateLimitError mid-graph")
+
+    mock_graph.stream.side_effect = _failing_stream
+
+    with pytest.raises(RuntimeError, match="RateLimitError mid-graph"):
+        run_review(
+            run_id=_RUN_ID,
+            project_id=_PROJECT_ID,
+            installation_id=_INSTALLATION_ID,
+            repo_full_name=_REPO,
+            pr_url=_PR_URL,
+            pr_head_sha=_PR_HEAD,
+            pr_base_sha=_PR_BASE,
+            locale="en",
+            enabled_specialists=["security"],
+        )
+
+    # Find the _update_run_status("failed", ...) call and verify cost was included
+    failed_call = next(
+        (c for c in mock_update_status.call_args_list if c.args[1] == "failed"),
+        None,
+    )
+    assert failed_call is not None, "No 'failed' status update was written"
+    extra = failed_call.args[2]
+    assert extra["total_input_tokens"] == 50_000
+    assert extra["total_output_tokens"] == 10_000
+    assert extra["total_cost_usd"] > 0

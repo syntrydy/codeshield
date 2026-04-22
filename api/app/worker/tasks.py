@@ -27,6 +27,29 @@ def _emit_event(run_id: str, event_type: str, payload: dict) -> None:  # type: i
     }).execute()
 
 
+def _insert_findings(run_id: str, findings: list[dict]) -> None:  # type: ignore[type-arg]
+    """Bulk-insert specialist findings into the findings table."""
+    if not findings:
+        return
+    from app.core.supabase import get_service_client
+    rows = [
+        {
+            "run_id": run_id,
+            "specialist": f.get("specialist"),
+            "severity": f.get("severity"),
+            "file_path": f.get("file_path"),
+            "line_start": f.get("line_start"),
+            "line_end": f.get("line_end"),
+            "title": f.get("title"),
+            "explanation": f.get("explanation"),
+            "suggested_fix": f.get("suggested_fix"),
+            "confidence": f.get("confidence"),
+        }
+        for f in findings
+    ]
+    get_service_client().table("findings").insert(rows).execute()
+
+
 def _update_run_status(run_id: str, status: str, extra: dict | None = None) -> None:  # type: ignore[type-arg]
     from app.core.supabase import get_service_client
     updates: dict = {"status": status}  # type: ignore[type-arg]
@@ -93,6 +116,11 @@ def run_review(
         except Exception as exc:
             logger.warning("Failed to update Check Run to in_progress", extra={"run_id": run_id, "error": str(exc)})
 
+    # Accumulated incrementally via streaming so the except block can read them on failure.
+    total_input = 0
+    total_output = 0
+    total_cost = 0.0
+
     try:
         # Fetch project settings before graph invocation — specialists need severity_threshold
         project_resp = get_service_client().table("projects").select("severity_threshold").eq("id", project_id).maybe_single().execute()
@@ -118,16 +146,20 @@ def run_review(
             "total_output_tokens": 0,
         }
 
-        result = compiled_graph.invoke(state)
+        # Stream instead of invoke so token counts accumulate before any exception propagates.
+        result: dict = {}  # type: ignore[type-arg]
+        for chunk in compiled_graph.stream(state, stream_mode="values"):
+            result = chunk
+            total_input = chunk.get("total_input_tokens", 0)
+            total_output = chunk.get("total_output_tokens", 0)
+            total_cost = _estimate_cost(total_input, total_output)
 
         final_review = result.get("final_review") or {}
         findings: list[dict] = result.get("findings", [])  # type: ignore[type-arg]
         findings_count = len(findings)
         errors = result.get("specialist_errors", [])
-        total_input = result.get("total_input_tokens", 0)
-        total_output = result.get("total_output_tokens", 0)
-        total_cost = _estimate_cost(total_input, total_output)
 
+        _insert_findings(run_id, findings)
         _update_run_status(run_id, "completed", {
             "total_input_tokens": total_input,
             "total_output_tokens": total_output,
@@ -183,7 +215,12 @@ def run_review(
         }
 
     except Exception as exc:
-        _update_run_status(run_id, "failed", {"error_message": str(exc)})
+        _update_run_status(run_id, "failed", {
+            "error_message": str(exc),
+            "total_input_tokens": total_input,
+            "total_output_tokens": total_output,
+            "total_cost_usd": total_cost,
+        })
         _emit_event(run_id, "run.failed", {"error": str(exc)})
         if installation_id and check_run_id:
             with contextlib.suppress(Exception):
