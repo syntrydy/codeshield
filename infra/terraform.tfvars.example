@@ -1,0 +1,15 @@
+# Copy to terraform.tfvars and fill in real values.
+# Never commit terraform.tfvars — it is in .gitignore.
+
+aws_region  = "us-east-1"
+environment = "prod"
+
+availability_zones = ["us-east-1a", "us-east-1b"]
+
+# ACM certificate ARN for the ALB HTTPS listener.
+# Request a cert in ACM (us-east-1), validate via DNS, then paste the ARN here.
+# Example: arn:aws:acm:us-east-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+acm_certificate_arn = "arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERT_ID"
+
+# Docker image tag to deploy. In CI this is set to the commit SHA automatically.
+image_tag = "latest"

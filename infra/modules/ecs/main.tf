@@ -1,4 +1,5 @@
 variable "name_prefix"          { type = string }
+variable "aws_region"           { type = string }
 variable "vpc_id"               { type = string }
 variable "private_subnet_ids"   { type = list(string) }
 variable "alb_target_group_arn" { type = string }
@@ -8,6 +9,18 @@ variable "worker_image"         { type = string }
 variable "redis_url"            { type = string }
 variable "secrets_manager_arns" { type = map(string) }
 
+# ── CloudWatch Log Groups ──────────────────────────────────────────────────────
+resource "aws_cloudwatch_log_group" "api" {
+  name              = "/ecs/${var.name_prefix}-api"
+  retention_in_days = 30
+}
+
+resource "aws_cloudwatch_log_group" "worker" {
+  name              = "/ecs/${var.name_prefix}-worker"
+  retention_in_days = 30
+}
+
+# ── IAM ───────────────────────────────────────────────────────────────────────
 resource "aws_ecs_cluster" "main" {
   name = "${var.name_prefix}-cluster"
 
@@ -37,6 +50,23 @@ resource "aws_iam_role_policy_attachment" "exec_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# AmazonECSTaskExecutionRolePolicy does not grant Secrets Manager access.
+# This inline policy allows the ECS agent to pull secret values at task startup.
+resource "aws_iam_role_policy" "secrets_access" {
+  name = "${var.name_prefix}-secrets-access"
+  role = aws_iam_role.task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["secretsmanager:GetSecretValue"]
+      Resource = values(var.secrets_manager_arns)
+    }]
+  })
+}
+
+# ── Task definitions ──────────────────────────────────────────────────────────
 resource "aws_ecs_task_definition" "api" {
   family                   = "${var.name_prefix}-api"
   requires_compatibilities = ["FARGATE"]
@@ -58,12 +88,14 @@ resource "aws_ecs_task_definition" "api" {
     logConfiguration = {
       logDriver = "awslogs"
       options = {
-        "awslogs-group"         = "/ecs/${var.name_prefix}-api"
-        "awslogs-region"        = "us-east-1"
+        "awslogs-group"         = aws_cloudwatch_log_group.api.name
+        "awslogs-region"        = var.aws_region
         "awslogs-stream-prefix" = "ecs"
       }
     }
   }])
+
+  depends_on = [aws_cloudwatch_log_group.api]
 }
 
 resource "aws_ecs_task_definition" "worker" {
@@ -86,14 +118,17 @@ resource "aws_ecs_task_definition" "worker" {
     logConfiguration = {
       logDriver = "awslogs"
       options = {
-        "awslogs-group"         = "/ecs/${var.name_prefix}-worker"
-        "awslogs-region"        = "us-east-1"
+        "awslogs-group"         = aws_cloudwatch_log_group.worker.name
+        "awslogs-region"        = var.aws_region
         "awslogs-stream-prefix" = "ecs"
       }
     }
   }])
+
+  depends_on = [aws_cloudwatch_log_group.worker]
 }
 
+# ── ECS Services ──────────────────────────────────────────────────────────────
 resource "aws_ecs_service" "api" {
   name            = "${var.name_prefix}-api"
   cluster         = aws_ecs_cluster.main.id

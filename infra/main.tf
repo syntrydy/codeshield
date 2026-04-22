@@ -61,6 +61,7 @@ module "ecs" {
   source = "./modules/ecs"
 
   name_prefix          = local.name_prefix
+  aws_region           = var.aws_region
   vpc_id               = module.vpc.vpc_id
   private_subnet_ids   = module.vpc.private_subnet_ids
   alb_target_group_arn = module.alb.api_target_group_arn
