@@ -344,6 +344,68 @@ def test_run_review_persists_findings_to_db(
     mock_insert.assert_called_once_with(_RUN_ID, expected_findings)
 
 
+# ── Idempotency guard ────────────────────────────────────────────────────────
+
+def _make_sb_mock_with_run_status(status: str, severity_threshold: str = "low") -> MagicMock:
+    """Mock where the runs table returns an existing status (for idempotency tests)."""
+    runs_chain = MagicMock()
+    runs_chain.execute.return_value = MagicMock(data={"status": status})
+    for m in ("select", "eq", "maybe_single"):
+        getattr(runs_chain, m).return_value = runs_chain
+
+    project_chain = MagicMock()
+    project_chain.execute.return_value = MagicMock(data={"severity_threshold": severity_threshold})
+    for m in ("select", "eq", "maybe_single"):
+        getattr(project_chain, m).return_value = project_chain
+
+    client = MagicMock()
+    def _route(name: str) -> MagicMock:
+        if name == "runs":
+            return runs_chain
+        if name == "projects":
+            return project_chain
+        return MagicMock()
+    client.table.side_effect = _route
+    return client
+
+
+@patch("app.worker.tasks.compiled_graph")
+@patch("app.core.supabase.get_service_client")
+@patch("app.core.github.create_check_run")
+def test_run_review_skips_already_completed_run(
+    mock_create_cr, mock_sb, mock_graph
+) -> None:
+    mock_sb.return_value = _make_sb_mock_with_run_status("completed")
+
+    result = run_review(
+        run_id=_RUN_ID, project_id=_PROJECT_ID, installation_id=_INSTALLATION_ID,
+        repo_full_name=_REPO, pr_url=_PR_URL, pr_head_sha=_PR_HEAD, pr_base_sha=_PR_BASE,
+        locale="en", enabled_specialists=["security"],
+    )
+
+    mock_graph.stream.assert_not_called()
+    mock_create_cr.assert_not_called()
+    assert result["run_id"] == _RUN_ID
+    assert result["findings_count"] == 0
+
+
+@patch("app.worker.tasks.compiled_graph")
+@patch("app.core.supabase.get_service_client")
+@patch("app.core.github.create_check_run")
+def test_run_review_skips_already_failed_run(
+    mock_create_cr, mock_sb, mock_graph
+) -> None:
+    mock_sb.return_value = _make_sb_mock_with_run_status("failed")
+
+    run_review(
+        run_id=_RUN_ID, project_id=_PROJECT_ID, installation_id=_INSTALLATION_ID,
+        repo_full_name=_REPO, pr_url=_PR_URL, pr_head_sha=_PR_HEAD, pr_base_sha=_PR_BASE,
+        locale="en", enabled_specialists=["security"],
+    )
+
+    mock_graph.stream.assert_not_called()
+
+
 # ── Graph timeout ────────────────────────────────────────────────────────────
 
 @patch("app.worker.tasks._GRAPH_TIMEOUT_SECONDS", 0)

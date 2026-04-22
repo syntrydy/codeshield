@@ -88,6 +88,23 @@ def run_review(
 
     logger.info("Review task started", extra={"run_id": run_id, "pr_url": pr_url})
 
+    # Guard against duplicate execution (SQS retry after a transient Supabase failure).
+    existing = (
+        get_service_client()
+        .table("runs")
+        .select("status")
+        .eq("id", run_id)
+        .maybe_single()
+        .execute()
+    )
+    existing_status = (existing.data or {}).get("status")
+    if existing_status in ("completed", "failed"):
+        logger.info(
+            "Skipping already-finished run",
+            extra={"run_id": run_id, "status": existing_status},
+        )
+        return {"run_id": run_id, "verdict": None, "findings_count": 0}
+
     # Create a queued Check Run on GitHub (best-effort — don't fail the task if GitHub is down)
     check_run_id: int | None = None
     if installation_id:
