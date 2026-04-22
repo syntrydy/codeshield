@@ -10,11 +10,12 @@ A developer installs the GitHub App on a repository. Every opened or updated pul
 
 | Layer | Technology |
 |---|---|
-| Backend API + worker | Python 3.12, FastAPI, Celery, LangGraph, LangChain Anthropic |
+| Backend API | Python 3.12, FastAPI, LangGraph, LangChain Anthropic, Pydantic v2 |
+| Background worker | AWS Lambda (container image) triggered by SQS; background thread locally |
 | Frontend | React 18, TypeScript, Vite, shadcn/ui, TanStack Query, Tailwind CSS |
 | Database + auth + realtime | Supabase (Postgres + pgvector, Auth, Realtime) |
 | LLM + observability | Anthropic Claude (Sonnet + Haiku), LangSmith |
-| Infrastructure | AWS ECS Fargate, ElastiCache Redis, S3, Secrets Manager, ECR |
+| Infrastructure | AWS App Runner (API), SQS, Lambda (worker), ElastiCache Serverless (token cache), CloudFront + S3 (frontend), ECR, Secrets Manager |
 | IaC | Terraform |
 | CI/CD | AWS CodeBuild |
 
@@ -51,7 +52,7 @@ For the full architecture, data model, agent design, and v2 roadmap, see [DESIGN
    make db-push
    ```
 
-3. **Start the full local stack** (API + worker + Redis + Vite dev server):
+3. **Start the full local stack** (API + Redis + Vite dev server):
 
    ```bash
    make up
@@ -60,9 +61,11 @@ For the full architecture, data model, agent design, and v2 roadmap, see [DESIGN
    Or to run the Vite dev server outside Docker (faster hot-reload):
 
    ```bash
-   make up          # starts api, worker, redis
+   make up          # starts api + redis
    make web-dev     # starts Vite in a separate terminal
    ```
+
+   Background review jobs run in a daemon thread locally (`TASK_BACKEND=local`, the default). No SQS or Lambda needed for local development.
 
 4. **Visit** `http://localhost:5173` — sign in with GitHub and install the App.
 
@@ -114,7 +117,7 @@ Three AWS CodeBuild projects, triggered by GitHub webhooks:
 | Project | Trigger | Action |
 |---|---|---|
 | `test` | Any push or PR | `ruff` + `mypy` + `pytest` + fast eval |
-| `build-deploy` | Push to `main` | Build Docker images → ECR → ECS rolling deploy |
+| `build-deploy` | Push to `main` | Build Docker image → ECR → Lambda update + App Runner deploy + CloudFront sync |
 | `terraform` | Push to `main` affecting `infra/**` | `terraform plan` on PRs, `terraform apply` on main |
 
 Buildspecs are in `buildspec/`. Required CodeBuild environment variables are documented at the top of each file.
@@ -136,7 +139,9 @@ make infra-plan
 make infra-apply
 ```
 
-Modules: `vpc`, `ecr`, `redis`, `alb`, `ecs`, `secrets`, `s3`. See `infra/` for details.
+Modules: `ecr`, `secrets`, `sqs`, `lambda`, `apprunner`, `redis_serverless`, `s3`, `cloudfront`. See `infra/` for details.
+
+All services are pay-as-you-go — there are no always-on instances. App Runner scales to zero between requests; Lambda is invoked per PR review; ElastiCache Serverless charges per GB-hour and per request.
 
 ---
 
@@ -158,13 +163,13 @@ Dataset format and metrics are documented in [evals/README.md](./evals/README.md
 ## Project structure
 
 ```
-api/            Python backend (FastAPI + Celery + LangGraph)
+api/            Python backend (FastAPI + LangGraph)
   app/
     core/       config, auth, supabase clients, github app, logging
     api/        FastAPI routes (projects, runs, integrations, health)
     webhooks/   GitHub webhook handler
     graph/      LangGraph state, nodes, graph assembly
-    worker/     Celery app + review task
+    worker/     dispatch.py, tasks.py (run_review), lambda_handler.py
   tests/
 evals/          Eval dataset, runner, and results
   dataset/      YAML-labeled PR fixtures

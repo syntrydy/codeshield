@@ -12,7 +12,7 @@ The goal is a portfolio project demonstrating production-grade AI engineering: o
 
 ## Stack (locked — do not propose alternatives)
 
-**Backend:** Python 3.12, FastAPI, LangGraph, LangChain Anthropic, Celery (Redis broker), Pydantic v2, `uv` for package management.
+**Backend:** Python 3.12, FastAPI, LangGraph, LangChain Anthropic, Pydantic v2, `uv` for package management. Background tasks dispatched via AWS SQS and executed by a Lambda container worker (`TASK_BACKEND=local` uses a daemon thread for local dev).
 
 **Frontend:** React 18, TypeScript, Vite, shadcn/ui components (copy-in, not npm), TanStack Query, `react-hook-form` + Zod, Tailwind CSS, `react-i18next` + `i18next-browser-languagedetector` for i18n.
 
@@ -20,7 +20,7 @@ The goal is a portfolio project demonstrating production-grade AI engineering: o
 
 **LLM & Observability:** Anthropic Claude only. Sonnet for reasoning, Haiku for routing/classification. LangSmith for traces, prompts (Hub), and evals. No other LLM providers, no model router.
 
-**Infra:** AWS — ECS Fargate (API + worker services), Application Load Balancer, ElastiCache Redis, S3, Secrets Manager, ECR, CloudWatch. Terraform with remote state in S3 + DynamoDB lock.
+**Infra:** AWS — App Runner (API service, pay-per-request), SQS (review queue), Lambda (worker, pay-per-invocation), ElastiCache Serverless (installation token cache, pay-per-use), S3, Secrets Manager, ECR, CloudWatch, CloudFront + S3 (frontend). Terraform with remote state in S3 + DynamoDB lock. No VPC, no ALB, no always-on worker.
 
 **CI/CD:** AWS CodeBuild. Three projects: test, build-deploy, terraform. Triggered by GitHub webhooks.
 
@@ -30,13 +30,13 @@ The goal is a portfolio project demonstrating production-grade AI engineering: o
 
 2. **Workers write to Supabase with the service-role client; browsers read with the anon key + user JWT.** Never pass service-role keys to the browser. Never bypass RLS in user-facing endpoints.
 
-3. **Agent progress streams via Supabase Realtime.** Workers insert rows into `run_events`; the browser subscribes via `postgres_changes`. No SSE endpoints. No WebSocket gateway. No Redis pub/sub for user-facing events (Redis is the Celery broker only).
+3. **Agent progress streams via Supabase Realtime.** Workers insert rows into `run_events`; the browser subscribes via `postgres_changes`. No SSE endpoints. No WebSocket gateway. No Redis pub/sub for user-facing events (Redis/ElastiCache is the installation token cache only).
 
 4. **All API endpoints verify user identity via the `current_user_id` FastAPI dependency** (decodes Supabase JWT with HS256 + project JWT secret). Webhook endpoints are the ONE exception — they verify via GitHub HMAC signature, not user JWT.
 
 5. **GitHub App acts via installation tokens, not OAuth tokens.** Mint on-demand by signing a JWT with the App private key and exchanging for a 1-hour token. Cache in Redis with 55-minute TTL, keyed by `installation_id`. Never persist installation tokens in Postgres.
 
-6. **The GitHub App private key lives in AWS Secrets Manager.** Never in `.env`, never in Supabase, never committed. Worker fetches via ECS task role at boot.
+6. **The GitHub App private key lives in AWS Secrets Manager.** Never in `.env`, never in Supabase, never committed. Lambda bootstraps secrets from Secrets Manager on cold start via its IAM execution role; App Runner reads them via its instance role.
 
 7. **Webhooks are idempotent.** The `X-GitHub-Delivery` header is the idempotency key; store seen IDs in Redis with 24h TTL. Webhook endpoints return 2xx within 10 seconds or GitHub retries.
 
@@ -64,22 +64,22 @@ The goal is a portfolio project demonstrating production-grade AI engineering: o
 - **No translating technical terms.** `pull request`, `commit`, `branch`, `webhook`, `Check Run`, `repository` stay in English in both `en.json` and `fr.json`. The francophone dev community uses the English forms.
 - **No storing translated severity or status enums in the DB.** Store English canonical values (`low`, `critical`, `queued`, `running`); translate on render.
 - **No Postgres triggers or stored procedures for application logic.** All business logic lives in Python. Triggers are for invariants (updated_at), not workflow.
-- **No Celery chains or chords.** One task per run. Orchestration happens inside the LangGraph, not in Celery.
+- **No task chaining.** One SQS message → one Lambda invocation → one `run_review` call. Orchestration happens inside the LangGraph, not in the dispatch layer.
 
 ## Project structure
 
 ```
-api/            Python backend (FastAPI + Celery + LangGraph)
+api/            Python backend (FastAPI + LangGraph)
   app/
     core/       config, supabase clients, auth, github app
     api/        FastAPI routes (user-facing)
     webhooks/   FastAPI routes (GitHub webhooks — separate namespace)
     graph/      LangGraph state, nodes, graph assembly, tools
-    worker/     Celery app + tasks
+    worker/     dispatch.py, tasks.py (run_review), lambda_handler.py
   tests/
 web/            React + TypeScript + shadcn frontend
 supabase/       migrations/, config.toml
-infra/          Terraform (modules + envs)
+infra/          Terraform (modules: ecr, secrets, sqs, lambda, apprunner, redis_serverless, s3, cloudfront)
 buildspec/      CodeBuild YAMLs (test, build-deploy, terraform)
 .github/        issue and PR templates (not CI — CI is CodeBuild)
 CLAUDE.md       this file
@@ -168,4 +168,22 @@ Claude Code should update this section at the end of each working session with w
   - `api/app/worker/tasks.py` — passes all three new fields into initial `ReviewState`; fetches `severity_threshold` from Supabase *before* graph invocation.
   - `api/app/graph/prompts.py` + `api/scripts/seed_prompts.py` — production-quality prompts for all 6 agents with locale, severity threshold, and JSON output format instructions.
   - 22 new tests (tools + nodes), all mocked at boundary. Suite: 63 tests passing.
-  - **Next:** end-to-end smoke test — requires filling in `.env` (Supabase, GitHub App, Anthropic, LangSmith), running `make up`, and opening a real PR against an App-installed repo.
+
+- **Scoring gap session:** Complete. Closed all high-impact rubric gaps:
+  - Eval dataset expanded from 2 → 15 YAML fixtures covering all 4 specialists.
+  - Latency instrumentation: `duration_ms` on all three graph nodes + HTTP middleware in `main.py`.
+  - Worker test coverage: 10 tests for `run_review` in `test_review_task.py` (was zero).
+  - Prompts upgraded to deliberate few-shot: positive example + false-positive guard per specialist.
+  - Token breakdown surfaced in `RunDetailPage` (input/output counts + cost).
+  - UI pages added: `ProjectsPage`, `AllRunsPage`, `GitHubCallbackPage`, `ProjectEditModal`.
+  - i18n keys added for `tokensIn`, `tokensOut` in both `en.json` and `fr.json`.
+  - Suite: 74 tests passing.
+
+- **Infrastructure refactor:** Complete. Replaced all always-on paid services with pay-as-you-go:
+  - Deleted `celery_app.py`; renamed `review_pr` → `run_review` (plain Python function, no broker).
+  - Added `worker/dispatch.py`: `TASK_BACKEND=local` runs a daemon thread, `=sqs` sends to SQS.
+  - Added `worker/lambda_handler.py`: bootstraps Secrets Manager on cold start, processes SQS records.
+  - Terraform: removed `vpc`, `alb`, `ecs`, `redis` modules; added `apprunner`, `sqs`, `lambda`, `redis_serverless` modules. `terraform validate` passes.
+  - `buildspec/build-deploy.yml`: replaces ECS rolling deploy with `lambda update-function-code` + `apprunner start-deployment`.
+  - `docker-compose.yml`: worker service removed (Redis kept for local token cache).
+  - Suite: 74 tests passing.
