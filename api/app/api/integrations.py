@@ -1,6 +1,7 @@
 """GitHub App installation callback endpoint (/integrations/github/install-callback)."""
 
 import logging
+from typing import Literal
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -18,8 +19,8 @@ _DEFAULT_SPECIALISTS = ["security", "correctness", "performance", "style"]
 
 @router.get("/github/install-callback")
 def github_install_callback(
-    installation_id: int = Query(...),
-    setup_action: str = Query(...),
+    installation_id: int = Query(..., gt=0),
+    setup_action: Literal["install", "update", "request"] = Query(...),
     user_id: str = Depends(current_user_id),
 ) -> dict:
     """Handle the redirect from GitHub after a user installs or updates the App.
@@ -31,6 +32,10 @@ def github_install_callback(
       4. Upsert each repo into projects with default settings.
       5. Return JSON so the frontend can redirect to the dashboard.
     """
+    if setup_action == "request":
+        # User requested access but installation is not complete yet — nothing to upsert.
+        return {"status": "pending", "repos_count": 0}
+
     try:
         return _do_install_callback(installation_id=installation_id, user_id=user_id)
     except HTTPException:
