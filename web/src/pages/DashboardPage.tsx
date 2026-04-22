@@ -41,7 +41,7 @@ export function DashboardPage() {
 
   const totalProjects = projectList.length;
   const pendingReviews = allRuns.filter((r) => r.status === "queued" || r.status === "running").length;
-  const totalRuns = allRuns.filter((r) => r.status === "completed").length;
+  const totalRuns = allRuns.filter((r) => ["completed", "failed", "cancelled"].includes(r.status)).length;
   const totalCost = allRuns.reduce((sum, r) => sum + r.total_cost_usd, 0);
 
   const recentRuns = [...allRuns]
@@ -125,15 +125,6 @@ export function DashboardPage() {
                 {recentRuns.length === 0 ? (
                   <div className="px-6 py-12 text-center text-sm text-zinc-500">
                     {t("dashboard.recentPRs.noRuns")}
-                    <div className="mt-3">
-                      <a
-                        href={installUrl}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-950 hover:underline"
-                      >
-                        {t("dashboard.installCta")}
-                        <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                      </a>
-                    </div>
                   </div>
                 ) : (
                   <table className="w-full text-left border-collapse">

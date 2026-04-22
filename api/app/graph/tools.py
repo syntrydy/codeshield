@@ -152,9 +152,8 @@ def get_file_content(path: str) -> str:
         return f"GitHub API error {resp.status_code}: {resp.text[:200]}"
 
     content = resp.text
-    # Truncate very large files to avoid filling the context window
-    if len(content) > 20_000:
-        content = content[:20_000] + f"\n\n... (truncated — file is {len(resp.text)} chars)"
+    if len(content) > 6_000:
+        content = content[:6_000] + f"\n\n... (truncated — file is {len(resp.text)} chars)"
     return content
 
 
@@ -182,8 +181,8 @@ def get_diff(path: str) -> str:
         return f"GitHub API error {resp.status_code}: {resp.text[:200]}"
 
     diff = resp.text
-    if len(diff) > 10_000:
-        diff = diff[:10_000] + "\n\n... (truncated)"
+    if len(diff) > 4_000:
+        diff = diff[:4_000] + "\n\n... (truncated)"
     return diff if diff.strip() else "(empty diff)"
 
 

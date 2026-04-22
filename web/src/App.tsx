@@ -8,6 +8,9 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { RunsPage } from "./pages/RunsPage";
 import { RunDetailPage } from "./pages/RunDetailPage";
+import { GitHubCallbackPage } from "./pages/GitHubCallbackPage";
+import { ProjectsPage } from "./pages/ProjectsPage";
+import { AllRunsPage } from "./pages/AllRunsPage";
 
 export default function App() {
   return (
@@ -46,6 +49,30 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <RunDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/runs"
+              element={
+                <ProtectedRoute>
+                  <AllRunsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/projects"
+              element={
+                <ProtectedRoute>
+                  <ProjectsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/github/callback"
+              element={
+                <ProtectedRoute>
+                  <GitHubCallbackPage />
                 </ProtectedRoute>
               }
             />

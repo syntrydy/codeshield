@@ -26,6 +26,8 @@ class Settings(BaseSettings):
 
     # Anthropic
     anthropic_api_key: str
+    # OpenAI — optional, used as fallback when Anthropic returns 429
+    openai_api_key: str | None = None
 
     # LangSmith
     langsmith_api_key: str
@@ -41,10 +43,13 @@ class Settings(BaseSettings):
     api_port: int = 8000
     environment: Literal["development", "production"] = "development"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+    cors_origins: list[str] = ["http://localhost:5173"]
 
     # AWS
     aws_region: str = "us-east-1"
     s3_artifacts_bucket: str = "code-review-artifacts-dev"
+    task_backend: Literal["local", "sqs"] = "local"
+    sqs_queue_url: str = ""
 
 
 @lru_cache

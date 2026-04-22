@@ -4,7 +4,6 @@ import logging
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import RedirectResponse
 
 from app.core.auth import current_user_id
 from app.core.github import _make_app_jwt, get_installation_token
@@ -22,7 +21,7 @@ def github_install_callback(
     installation_id: int = Query(...),
     setup_action: str = Query(...),
     user_id: str = Depends(current_user_id),
-) -> RedirectResponse:
+) -> dict:
     """Handle the redirect from GitHub after a user installs or updates the App.
 
     Flow (DESIGN.md §8.3):
@@ -30,8 +29,21 @@ def github_install_callback(
       2. Upsert into github_app_installations.
       3. Fetch accessible repositories for this installation.
       4. Upsert each repo into projects with default settings.
-      5. Redirect to dashboard.
+      5. Return JSON so the frontend can redirect to the dashboard.
     """
+    try:
+        return _do_install_callback(installation_id=installation_id, user_id=user_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("install-callback unhandled error: %s", exc, exc_info=exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Installation callback failed: {exc}",
+        ) from exc
+
+
+def _do_install_callback(*, installation_id: int, user_id: str) -> dict:  # type: ignore[type-arg]
     client = get_service_client()
 
     # 1. Fetch installation metadata from GitHub
@@ -124,5 +136,4 @@ def github_install_callback(
         },
     )
 
-    # 5. Redirect to dashboard
-    return RedirectResponse(url="/dashboard?installed=1", status_code=status.HTTP_302_FOUND)
+    return {"status": "ok", "repos_count": len(repos)}

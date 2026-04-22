@@ -20,6 +20,7 @@ services:
       - .env
     volumes:
       - ./api/app:/app/app
+      - ./secrets:/app/secrets:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -29,19 +30,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 90s
-
-  worker:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    command: uv run celery -A app.worker.celery_app worker --loglevel=info --concurrency=2
-    env_file:
-      - .env
-    volumes:
-      - ./api/app:/app/app
-    depends_on:
-      redis:
-        condition: service_healthy
 
   web:
     image: node:20-alpine

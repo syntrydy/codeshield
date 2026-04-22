@@ -54,7 +54,7 @@ def test_planner_returns_plan_and_changed_files() -> None:
     mock_pr = MagicMock(return_value="PR meta")
     mock_files = MagicMock(return_value="src/auth/login.py")
     with (
-        patch("app.graph.nodes._sonnet", return_value=fake_llm),
+        patch("app.graph.nodes._get_llm", return_value=fake_llm),
         patch("app.graph.tools._get_headers", return_value={}),
         patch("app.graph.tools.get_pr_metadata", mock_pr),
         patch("app.graph.tools.get_changed_files", mock_files),
@@ -71,7 +71,7 @@ def test_planner_fallback_on_bad_json() -> None:
     mock_files = MagicMock(return_value="")
 
     with (
-        patch("app.graph.nodes._sonnet", return_value=fake_llm),
+        patch("app.graph.nodes._get_llm", return_value=fake_llm),
         patch("app.graph.tools._get_headers", return_value={}),
         patch("app.graph.tools.get_pr_metadata", mock_pr),
         patch("app.graph.tools.get_changed_files", mock_files),
@@ -89,7 +89,7 @@ def test_planner_includes_token_counts() -> None:
     mock_files = MagicMock(return_value="")
 
     with (
-        patch("app.graph.nodes._sonnet", return_value=fake_llm),
+        patch("app.graph.nodes._get_llm", return_value=fake_llm),
         patch("app.graph.tools._get_headers", return_value={}),
         patch("app.graph.tools.get_pr_metadata", mock_pr),
         patch("app.graph.tools.get_changed_files", mock_files),
@@ -109,7 +109,7 @@ def _specialist_state() -> ReviewState:
     return state  # type: ignore[return-value]
 
 
-def _fake_sonnet_with_tools(responses: list[str]) -> MagicMock:
+def _fake_llm_with_tools(responses: list[str]) -> MagicMock:
     """Return a mock that acts like ChatAnthropic(...).bind_tools(...), returning fake responses."""
     fake_llm = FakeListChatModel(responses=responses)
     mock = MagicMock()
@@ -131,7 +131,7 @@ def test_specialist_returns_findings_list() -> None:
         "confidence": "high",
     }])
 
-    with patch("app.graph.nodes._sonnet", return_value=_fake_sonnet_with_tools([findings_json])):
+    with patch("app.graph.nodes._get_llm", return_value=_fake_llm_with_tools([findings_json])):
         result = _run_specialist("security", _specialist_state())
 
     assert len(result["findings"]) == 1
@@ -139,7 +139,7 @@ def test_specialist_returns_findings_list() -> None:
 
 
 def test_specialist_empty_findings_on_no_issues() -> None:
-    with patch("app.graph.nodes._sonnet", return_value=_fake_sonnet_with_tools(["[]"])):
+    with patch("app.graph.nodes._get_llm", return_value=_fake_llm_with_tools(["[]"])):
         result = _run_specialist("style", _specialist_state())
 
     assert result["findings"] == []
@@ -149,14 +149,14 @@ def test_specialist_empty_findings_on_no_issues() -> None:
 def test_specialist_stamps_specialist_name() -> None:
     findings_json = json.dumps([{"title": "Issue", "severity": "low"}])
 
-    with patch("app.graph.nodes._sonnet", return_value=_fake_sonnet_with_tools([findings_json])):
+    with patch("app.graph.nodes._get_llm", return_value=_fake_llm_with_tools([findings_json])):
         result = _run_specialist("performance", _specialist_state())
 
     assert result["findings"][0]["specialist"] == "performance"
 
 
 def test_specialist_recovers_from_bad_json_output() -> None:
-    with patch("app.graph.nodes._sonnet", return_value=_fake_sonnet_with_tools(["Not a JSON array, just prose."])):
+    with patch("app.graph.nodes._get_llm", return_value=_fake_llm_with_tools(["Not a JSON array, just prose."])):
         result = _run_specialist("correctness", _specialist_state())
 
     assert result["findings"] == []
@@ -183,7 +183,7 @@ def test_aggregator_returns_verdict() -> None:
     })
     fake_llm = FakeListChatModel(responses=[agg_json])
 
-    with patch("app.graph.nodes._sonnet", return_value=fake_llm):
+    with patch("app.graph.nodes._get_llm", return_value=fake_llm):
         result = aggregator_node(_aggregator_state())
 
     assert result["final_review"]["verdict"] == "request_changes"
@@ -193,7 +193,7 @@ def test_aggregator_returns_verdict() -> None:
 def test_aggregator_fallback_on_bad_json() -> None:
     fake_llm = FakeListChatModel(responses=["oops not json"])
 
-    with patch("app.graph.nodes._sonnet", return_value=fake_llm):
+    with patch("app.graph.nodes._get_llm", return_value=fake_llm):
         result = aggregator_node(_aggregator_state())
 
     assert result["final_review"]["verdict"] == "comment"
@@ -204,7 +204,7 @@ def test_aggregator_includes_token_counts() -> None:
     agg_json = json.dumps({"summary": "", "verdict": "approve", "findings": []})
     fake_llm = FakeListChatModel(responses=[agg_json])
 
-    with patch("app.graph.nodes._sonnet", return_value=fake_llm):
+    with patch("app.graph.nodes._get_llm", return_value=fake_llm):
         result = aggregator_node(_aggregator_state())
 
     assert "total_input_tokens" in result

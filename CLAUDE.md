@@ -56,7 +56,7 @@ The goal is a portfolio project demonstrating production-grade AI engineering: o
 - **No `print()` for logging.** Use the standard `logging` module with a structured formatter. `print()` is for REPL exploration only.
 - **No silent `except Exception: pass`.** Either handle the specific exception meaningfully, emit a failure event, or re-raise.
 - **No committing `.env`, `.pem`, or anything under `secrets/`.** `.gitignore` enforces this; don't override.
-- **No OpenAI, Gemini, Mistral, or model-router packages.** If a task "needs" another provider, something upstream is wrong — surface it.
+- **No OpenAI, Gemini, Mistral, or model-router packages** — with one approved exception: `langchain-openai` is permitted as a `.with_fallbacks()` fallback on the Anthropic client to handle 429 rate-limit errors. It must never be used as a primary LLM and may not be added as a dependency for any other purpose.
 - **No `any` in TypeScript** except at library boundaries where the upstream types are broken. Annotate those with `// library-boundary: <reason>`.
 - **No SSE, no custom WebSocket server.** Supabase Realtime is the streaming layer.
 - **No hardcoded prompts in graph nodes.** Even stubs for Day 1 should pull from LangSmith Hub (seed the Hub with placeholders on Day 1).

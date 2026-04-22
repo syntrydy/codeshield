@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from app.core.auth import current_user_id
-from app.core.supabase import get_anon_client
+from app.core.supabase import get_service_client
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ def list_runs(
     user_id: str = Depends(current_user_id),
 ) -> list[dict]:  # type: ignore[type-arg]
     """Return recent runs for a project, newest first."""
-    client = get_anon_client()
+    client = get_service_client()
 
     # Verify project belongs to user (RLS also enforces this, but gives a clearer 404)
     proj = (
@@ -94,7 +94,7 @@ def list_runs(
 @router.get("/runs/{run_id}", response_model=RunDetail)
 def get_run(run_id: UUID, user_id: str = Depends(current_user_id)) -> dict:  # type: ignore[type-arg]
     """Return a single run with its findings and events."""
-    client = get_anon_client()
+    client = get_service_client()
 
     run_resp = (
         client.table("runs")

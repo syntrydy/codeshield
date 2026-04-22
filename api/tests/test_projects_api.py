@@ -65,7 +65,7 @@ def fake_anon_client() -> MagicMock:
 @pytest.mark.anyio
 async def test_list_projects_returns_200(fake_anon_client: MagicMock) -> None:
     fake_anon_client.table.return_value.execute.return_value = MagicMock(data=[_PROJECT])
-    with patch("app.api.projects.get_anon_client", return_value=fake_anon_client):
+    with patch("app.api.projects.get_service_client", return_value=fake_anon_client):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get(
                 "/projects", headers={"Authorization": f"Bearer {_make_token()}"}
@@ -84,7 +84,7 @@ async def test_list_projects_requires_auth() -> None:
 @pytest.mark.anyio
 async def test_get_project_returns_200(fake_anon_client: MagicMock) -> None:
     fake_anon_client.table.return_value.execute.return_value = MagicMock(data=_PROJECT)
-    with patch("app.api.projects.get_anon_client", return_value=fake_anon_client):
+    with patch("app.api.projects.get_service_client", return_value=fake_anon_client):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get(
                 f"/projects/{_PROJECT['id']}",
@@ -97,7 +97,7 @@ async def test_get_project_returns_200(fake_anon_client: MagicMock) -> None:
 @pytest.mark.anyio
 async def test_get_project_not_found_returns_404(fake_anon_client: MagicMock) -> None:
     fake_anon_client.table.return_value.execute.return_value = MagicMock(data=None)
-    with patch("app.api.projects.get_anon_client", return_value=fake_anon_client):
+    with patch("app.api.projects.get_service_client", return_value=fake_anon_client):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get(
                 "/projects/00000000-0000-0000-0000-000000000000",
@@ -110,7 +110,7 @@ async def test_get_project_not_found_returns_404(fake_anon_client: MagicMock) ->
 async def test_update_project_returns_200(fake_anon_client: MagicMock) -> None:
     updated = {**_PROJECT, "severity_threshold": "high"}
     fake_anon_client.table.return_value.execute.return_value = MagicMock(data=[updated])
-    with patch("app.api.projects.get_anon_client", return_value=fake_anon_client):
+    with patch("app.api.projects.get_service_client", return_value=fake_anon_client):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.patch(
                 f"/projects/{_PROJECT['id']}",
@@ -123,7 +123,7 @@ async def test_update_project_returns_200(fake_anon_client: MagicMock) -> None:
 
 @pytest.mark.anyio
 async def test_update_project_empty_body_returns_422(fake_anon_client: MagicMock) -> None:
-    with patch("app.api.projects.get_anon_client", return_value=fake_anon_client):
+    with patch("app.api.projects.get_service_client", return_value=fake_anon_client):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.patch(
                 f"/projects/{_PROJECT['id']}",

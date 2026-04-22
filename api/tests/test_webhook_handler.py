@@ -25,6 +25,19 @@ _INSTALL_PAYLOAD = {
     "installation": {"id": 99, "account": {"login": "owner", "type": "User"}},
 }
 
+_CHECK_RUN_RERUN_PAYLOAD = {
+    "action": "rerequested",
+    "check_run": {
+        "id": 1,
+        "head_sha": "abc123",
+        "pull_requests": [
+            {"number": 42, "head": {"sha": "abc123"}, "base": {"sha": "def456"}},
+        ],
+    },
+    "repository": {"full_name": "owner/repo"},
+    "installation": {"id": 99},
+}
+
 
 def _sign(body: bytes, secret: str = _SECRET) -> str:
     return "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
@@ -115,9 +128,9 @@ def mock_supabase():  # type: ignore[no-untyped-def]
 
 @pytest.fixture(autouse=True)
 def mock_celery_dispatch():  # type: ignore[no-untyped-def]
-    """Prevent all tests in this module from hitting the real Celery broker."""
-    with patch("app.worker.tasks.review_pr.delay") as mock_delay:
-        yield mock_delay
+    """Prevent all tests in this module from actually dispatching reviews."""
+    with patch("app.worker.dispatch.dispatch_review") as mock_dispatch:
+        yield mock_dispatch
 
 
 @pytest.mark.anyio
@@ -168,3 +181,15 @@ async def test_installation_event_accepted(mock_settings, mock_redis) -> None:  
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post("/webhooks/github", content=body, headers=headers)
     assert resp.status_code == 202
+
+
+@pytest.mark.anyio
+async def test_check_run_rerequested_queues_review(mock_settings, mock_redis, mock_supabase, mock_celery_dispatch) -> None:  # type: ignore[no-untyped-def]
+    body = json.dumps(_CHECK_RUN_RERUN_PAYLOAD).encode()
+    headers = _headers(body, event="check_run", delivery="rerun-delivery-id")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.post("/webhooks/github", content=body, headers=headers)
+    assert resp.status_code == 202
+    mock_celery_dispatch.assert_called_once()
+    call_kwargs = mock_celery_dispatch.call_args.kwargs
+    assert call_kwargs["pr_head_sha"] == "abc123"

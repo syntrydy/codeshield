@@ -1,14 +1,15 @@
-"""Celery task that invokes the LangGraph review pipeline and writes results to Supabase."""
+"""Core review pipeline: invokes LangGraph and writes results to Supabase.
+
+Called from dispatch.py (background thread locally, Lambda in production).
+No Celery dependency — plain Python function.
+"""
 
 import contextlib
 import logging
 from datetime import UTC, datetime
 
-from celery import Task
-
 from app.graph.graph import compiled_graph
 from app.graph.state import ReviewState
-from app.worker.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
@@ -38,17 +39,7 @@ def _update_run_status(run_id: str, status: str, extra: dict | None = None) -> N
     get_service_client().table("runs").update(updates).eq("id", run_id).execute()
 
 
-@celery_app.task(  # type: ignore[misc]
-    bind=True,
-    name="app.worker.tasks.review_pr",
-    max_retries=3,
-    default_retry_delay=30,
-    autoretry_for=(Exception,),
-    retry_backoff=True,
-    retry_jitter=True,
-)
-def review_pr(
-    self: Task,
+def run_review(
     run_id: str,
     project_id: str,
     installation_id: int | None,

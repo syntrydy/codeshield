@@ -1,8 +1,8 @@
-"""Tests for the review_pr Celery task.
+"""Tests for the run_review task function.
 
 Mocks at the boundary: compiled_graph.invoke, get_service_client,
 create_check_run, update_check_run. No real LLM calls, no real Supabase
-connection, no running Celery broker required.
+connection, no broker required.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.worker.tasks import _estimate_cost, review_pr
+from app.worker.tasks import _estimate_cost, run_review
 
 
 _RUN_ID = "run-00000001"
@@ -96,7 +96,7 @@ def test_review_pr_returns_run_id_verdict_and_count(
     mock_sb.return_value = _make_sb_mock("medium")
     mock_graph.invoke.return_value = _graph_result()
 
-    result = review_pr.run(
+    result = run_review(
         run_id=_RUN_ID,
         project_id=_PROJECT_ID,
         installation_id=_INSTALLATION_ID,
@@ -125,7 +125,7 @@ def test_review_pr_invokes_graph_with_correct_state(
     mock_sb.return_value = _make_sb_mock("high")
     mock_graph.invoke.return_value = _graph_result(verdict="approve", findings=[])
 
-    review_pr.run(
+    run_review(
         run_id=_RUN_ID,
         project_id=_PROJECT_ID,
         installation_id=_INSTALLATION_ID,
@@ -160,7 +160,7 @@ def test_review_pr_creates_and_completes_check_run(
     mock_sb.return_value = _make_sb_mock()
     mock_graph.invoke.return_value = _graph_result()
 
-    review_pr.run(
+    run_review(
         run_id=_RUN_ID,
         project_id=_PROJECT_ID,
         installation_id=_INSTALLATION_ID,
@@ -198,7 +198,7 @@ def test_review_pr_check_run_failure_is_nonfatal(
     mock_sb.return_value = _make_sb_mock()
     mock_graph.invoke.return_value = _graph_result(verdict="approve", findings=[])
 
-    result = review_pr.run(
+    result = run_review(
         run_id=_RUN_ID,
         project_id=_PROJECT_ID,
         installation_id=_INSTALLATION_ID,
@@ -230,7 +230,7 @@ def test_review_pr_graph_failure_re_raises_and_marks_check_run_failed(
     mock_graph.invoke.side_effect = RuntimeError("LLM timeout")
 
     with pytest.raises(RuntimeError, match="LLM timeout"):
-        review_pr.run(
+        run_review(
             run_id=_RUN_ID,
             project_id=_PROJECT_ID,
             installation_id=_INSTALLATION_ID,
@@ -266,7 +266,7 @@ def test_review_pr_no_installation_skips_check_run(
     mock_sb.return_value = _make_sb_mock()
     mock_graph.invoke.return_value = _graph_result()
 
-    result = review_pr.run(
+    result = run_review(
         run_id=_RUN_ID,
         project_id=_PROJECT_ID,
         installation_id=None,

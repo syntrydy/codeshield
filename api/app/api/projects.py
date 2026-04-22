@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.core.auth import current_user_id
-from app.core.supabase import get_anon_client
+from app.core.supabase import get_service_client
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class ProjectUpdateRequest(BaseModel):
 @router.get("", response_model=list[ProjectResponse])
 def list_projects(user_id: str = Depends(current_user_id)) -> list[dict]:  # type: ignore[type-arg]
     """Return all projects belonging to the authenticated user."""
-    client = get_anon_client()
+    client = get_service_client()
     resp = (
         client.table("projects")
         .select("*")
@@ -52,7 +52,7 @@ def list_projects(user_id: str = Depends(current_user_id)) -> list[dict]:  # typ
 @router.get("/{project_id}", response_model=ProjectResponse)
 def get_project(project_id: UUID, user_id: str = Depends(current_user_id)) -> dict:  # type: ignore[type-arg]
     """Return a single project by ID (must belong to the authenticated user)."""
-    client = get_anon_client()
+    client = get_service_client()
     resp = (
         client.table("projects")
         .select("*")
@@ -77,7 +77,7 @@ def update_project(
     if not updates:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No fields to update")
 
-    client = get_anon_client()
+    client = get_service_client()
     resp = (
         client.table("projects")
         .update(updates)

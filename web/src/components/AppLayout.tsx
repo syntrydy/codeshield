@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../hooks/useAuth";
 
-type ActivePage = "home" | "settings";
+type ActivePage = "home" | "projects" | "runs" | "settings";
 
 type AppLayoutProps = {
   activePage: ActivePage;
@@ -68,7 +68,8 @@ export function AppLayout({ activePage, breadcrumb, hasProjects, children }: App
 
         <nav className="flex-1 px-2 space-y-1">
           {navItem("home", "/dashboard", "home", t("dashboard.nav.home"))}
-          {hasProjects && navItem(null, "#", "folder", t("dashboard.nav.projects"), true)}
+          {hasProjects && navItem("projects", "/projects", "folder", t("dashboard.nav.projects"))}
+          {hasProjects && navItem("runs", "/runs", "history", t("dashboard.nav.runs"))}
           {navItem("settings", "/settings", "settings", t("dashboard.nav.settings"))}
         </nav>
 

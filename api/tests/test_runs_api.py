@@ -73,7 +73,7 @@ async def test_list_runs_returns_200() -> None:
         _make_chain(data={"id": _PROJECT_ID}),
         _make_chain(data=[_RUN]),
     ]
-    with patch("app.api.runs.get_anon_client", return_value=fake_client):
+    with patch("app.api.runs.get_service_client", return_value=fake_client):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get(
                 f"/projects/{_PROJECT_ID}/runs",
@@ -87,7 +87,7 @@ async def test_list_runs_returns_200() -> None:
 async def test_list_runs_unknown_project_returns_404() -> None:
     fake_client = MagicMock()
     fake_client.table.return_value = _make_chain(data=None)
-    with patch("app.api.runs.get_anon_client", return_value=fake_client):
+    with patch("app.api.runs.get_service_client", return_value=fake_client):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get(
                 "/projects/00000000-0000-0000-0000-000000000000/runs",
@@ -104,7 +104,7 @@ async def test_get_run_returns_200_with_findings_and_events() -> None:
         _make_chain(data=[]),   # findings
         _make_chain(data=[]),   # events
     ]
-    with patch("app.api.runs.get_anon_client", return_value=fake_client):
+    with patch("app.api.runs.get_service_client", return_value=fake_client):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get(
                 f"/runs/{_RUN_ID}",
@@ -121,7 +121,7 @@ async def test_get_run_returns_200_with_findings_and_events() -> None:
 async def test_get_run_not_found_returns_404() -> None:
     fake_client = MagicMock()
     fake_client.table.return_value = _make_chain(data=None)
-    with patch("app.api.runs.get_anon_client", return_value=fake_client):
+    with patch("app.api.runs.get_service_client", return_value=fake_client):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get(
                 "/runs/00000000-0000-0000-0000-000000000000",
