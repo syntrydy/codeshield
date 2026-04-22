@@ -1,7 +1,19 @@
 import { useEffect, useRef } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, Controller, type Resolver } from "react-hook-form";
 import { z } from "zod";
+
+function zodResolver<T extends z.ZodTypeAny>(schema: T): Resolver<z.infer<T>> {
+  return (values) => {
+    const result = schema.safeParse(values);
+    if (result.success) return { values: result.data, errors: {} };
+    const errors: Record<string, { type: string; message: string }> = {};
+    for (const issue of result.error.issues) {
+      const key = issue.path.join(".") || "root";
+      if (!errors[key]) errors[key] = { type: issue.code, message: issue.message };
+    }
+    return { values: {}, errors };
+  };
+}
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { updateProject, type Project, type ProjectUpdate } from "../lib/api";
