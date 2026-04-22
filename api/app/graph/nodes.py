@@ -5,10 +5,12 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from collections.abc import Callable
 from typing import Any
 
 from langchain_anthropic import ChatAnthropic
+from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
 from app.core.config import get_settings
@@ -18,16 +20,27 @@ from app.graph.tools import ALL_TOOLS, set_github_context
 
 logger = logging.getLogger(__name__)
 
-_MAX_TOOL_ITERATIONS = 6
+_MAX_TOOL_ITERATIONS = 4
 
 
-def _sonnet() -> ChatAnthropic:
+def _get_llm() -> BaseChatModel:
     from pydantic import SecretStr
-    return ChatAnthropic(  # type: ignore[call-arg]
+    primary: BaseChatModel = ChatAnthropic(  # type: ignore[call-arg]
         model="claude-sonnet-4-5",
         api_key=SecretStr(get_settings().anthropic_api_key),
-        max_tokens=4096,
+        max_tokens=2048,
+        max_retries=5,
     )
+    openai_key = get_settings().openai_api_key
+    if openai_key:
+        from langchain_openai import ChatOpenAI
+        fallback = ChatOpenAI(
+            model="gpt-4o-mini",
+            api_key=SecretStr(openai_key),
+            max_tokens=2048,
+        )
+        return primary.with_fallbacks([fallback])
+    return primary
 
 
 def _extract_json(text: str) -> Any:
@@ -45,6 +58,7 @@ def planner_node(state: ReviewState) -> dict[str, Any]:
     their reviews. On parse failure, falls back to a safe default so the run continues.
     """
     logger.info("Planner started", extra={"run_id": state["run_id"]})
+    _t0 = time.perf_counter()
 
     set_github_context(
         installation_id=state["github_installation_id"],
@@ -60,7 +74,7 @@ def planner_node(state: ReviewState) -> dict[str, Any]:
     system = get_prompt("planner").format(locale=state["locale"])
     user_msg = f"PR metadata:\n{pr_meta}\n\nChanged files:\n{changed}"
 
-    llm = _sonnet()
+    llm = _get_llm()
     ai_resp: AIMessage = llm.invoke([SystemMessage(content=system), HumanMessage(content=user_msg)])  # type: ignore[assignment]
 
     meta: dict[str, Any] = ai_resp.usage_metadata or {}  # type: ignore[assignment]
@@ -80,7 +94,10 @@ def planner_node(state: ReviewState) -> dict[str, Any]:
         plan = {"change_type": "unknown", "focus_areas": [], "skip_specialists": []}
         changed_files = []
 
-    logger.info("Planner complete", extra={"run_id": state["run_id"], "plan": plan})
+    logger.info(
+        "Planner complete",
+        extra={"run_id": state["run_id"], "plan": plan, "duration_ms": round((time.perf_counter() - _t0) * 1000)},
+    )
     return {
         "plan": plan,
         "changed_files": changed_files,
@@ -134,6 +151,7 @@ def _run_specialist(specialist_name: str, state: ReviewState) -> dict[str, Any]:
     from ALL_TOOLS to inspect the PR. After the loop, the final AI message is parsed for
     a JSON array of findings.
     """
+    _t0 = time.perf_counter()
     set_github_context(
         installation_id=state["github_installation_id"],
         repo_full_name=state["repo_full_name"],
@@ -148,7 +166,7 @@ def _run_specialist(specialist_name: str, state: ReviewState) -> dict[str, Any]:
         locale=state["locale"],
     )
 
-    llm = _sonnet().bind_tools(ALL_TOOLS)
+    llm = _get_llm().bind_tools(ALL_TOOLS)
 
     messages: list[Any] = [
         SystemMessage(content=system),
@@ -194,6 +212,7 @@ def _run_specialist(specialist_name: str, state: ReviewState) -> dict[str, Any]:
             "run_id": state["run_id"],
             "specialist": specialist_name,
             "findings_count": len(findings),
+            "duration_ms": round((time.perf_counter() - _t0) * 1000),
         },
     )
     return {
@@ -213,6 +232,7 @@ def aggregator_node(state: ReviewState) -> dict[str, Any]:
         "Aggregator started",
         extra={"run_id": state["run_id"], "findings_count": len(state["findings"])},
     )
+    _t0 = time.perf_counter()
 
     system_template = get_prompt("aggregator")
     system = system_template.format(
@@ -221,7 +241,7 @@ def aggregator_node(state: ReviewState) -> dict[str, Any]:
         locale=state["locale"],
     )
 
-    llm = _sonnet()
+    llm = _get_llm()
     agg_resp: AIMessage = llm.invoke([SystemMessage(content=system), HumanMessage(content="Produce the final review.")])  # type: ignore[assignment]
 
     agg_meta: dict[str, Any] = agg_resp.usage_metadata or {}  # type: ignore[assignment]
@@ -245,7 +265,11 @@ def aggregator_node(state: ReviewState) -> dict[str, Any]:
 
     logger.info(
         "Aggregator complete",
-        extra={"run_id": state["run_id"], "verdict": final_review["verdict"]},
+        extra={
+            "run_id": state["run_id"],
+            "verdict": final_review["verdict"],
+            "duration_ms": round((time.perf_counter() - _t0) * 1000),
+        },
     )
     return {
         "final_review": final_review,
