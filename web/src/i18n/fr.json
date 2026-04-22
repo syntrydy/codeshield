@@ -19,8 +19,7 @@
     "specialists": "Spécialistes",
     "threshold": "Seuil de sévérité",
     "version": "v1.0.0",
-    "breadcrumb": "Vue d'ensemble / Tableau de bord",
-    "searchPlaceholder": "Rechercher des ressources...",
+    "breadcrumb": "Vue d'ensemble",
     "nav": {
       "home": "Accueil",
       "projects": "Projets",
@@ -39,7 +38,15 @@
       "totalRuns": "Exécutions totales",
       "totalRunsSub": "revues effectuées",
       "totalCost": "Coût total",
-      "totalCostSub": "dépenses de revue IA"
+      "totalCostSub": "dépenses de revue IA",
+      "successRate": "Taux de succès",
+      "successRateSub": "revues terminées",
+      "avgCost": "Coût moy. / revue",
+      "avgCostSub": "par revue",
+      "totalFindings": "Total des résultats",
+      "totalFindingsSub": "sur toutes les revues",
+      "criticalIssues": "Problèmes critiques",
+      "criticalIssuesSub": "sévérité haute + critique"
     },
     "recentPRs": {
       "title": "Pull Requests récentes",

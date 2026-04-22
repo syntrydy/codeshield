@@ -91,15 +91,6 @@ export function AppLayout({ activePage, breadcrumb, hasProjects, children }: App
         <header className="sticky top-0 z-40 bg-white border-b border-zinc-200 h-14 px-6 flex justify-between items-center">
           <span className="text-sm font-medium tracking-tight text-zinc-950">{breadcrumb}</span>
           <div className="flex items-center gap-4">
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-zinc-400 text-sm">search</span>
-              <input
-                className="pl-9 pr-4 py-1.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:border-zinc-400 transition-all w-56"
-                placeholder={t("dashboard.searchPlaceholder")}
-                type="text"
-                readOnly
-              />
-            </div>
             <button className="p-2 text-zinc-500 hover:bg-zinc-50 rounded transition-colors">
               <span className="material-symbols-outlined text-[20px]">notifications</span>
             </button>

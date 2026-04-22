@@ -19,8 +19,7 @@
     "specialists": "Specialists",
     "threshold": "Severity threshold",
     "version": "v1.0.0",
-    "breadcrumb": "Overview / Dashboard",
-    "searchPlaceholder": "Search resources...",
+    "breadcrumb": "Overview",
     "nav": {
       "home": "Home",
       "projects": "Projects",
@@ -39,7 +38,15 @@
       "totalRuns": "Total Runs",
       "totalRunsSub": "reviews run",
       "totalCost": "Total Cost",
-      "totalCostSub": "AI review spend"
+      "totalCostSub": "AI review spend",
+      "successRate": "Success Rate",
+      "successRateSub": "completed reviews",
+      "avgCost": "Avg Cost / Run",
+      "avgCostSub": "per review",
+      "totalFindings": "Total Findings",
+      "totalFindingsSub": "across all runs",
+      "criticalIssues": "Critical Issues",
+      "criticalIssuesSub": "high + critical severity"
     },
     "recentPRs": {
       "title": "Recent Pull Requests",
