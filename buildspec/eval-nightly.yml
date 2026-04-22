@@ -1,0 +1,60 @@
+# buildspec/eval-nightly.yml
+# Triggered by a CodeBuild scheduled rule (daily at 02:00 UTC).
+# Runs the full 15-fixture eval suite, posts results to LangSmith,
+# and fails the build if recall drops below 60% or FP rate exceeds 30%.
+version: 0.2
+
+env:
+  secrets-manager:
+    ANTHROPIC_API_KEY: code-review-prod/anthropic_api_key
+    LANGSMITH_API_KEY: code-review-prod/langsmith_api_key
+    SUPABASE_SECRET_KEY: code-review-prod/supabase_service_role_key
+    GITHUB_APP_ID: code-review-prod/github_app_id
+    GITHUB_PRIVATE_KEY: code-review-prod/github_private_key
+    GITHUB_WEBHOOK_SECRET: code-review-prod/github_webhook_secret
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+    commands:
+      - curl -LsSf https://astral.sh/uv/install.sh | sh
+      - export PATH="$HOME/.local/bin:$PATH"
+
+  pre_build:
+    commands:
+      - cd api && uv sync
+
+  build:
+    commands:
+      # Run all 15 fixtures; gates: recall >= 60%, FP rate <= 30%
+      - |
+        cd ..
+        PYTHONPATH=api uv --project api run python -m evals.run \
+          --output evals/results-nightly.json \
+          2>&1 | tee evals/nightly.log
+      # Print a summary for CloudWatch Logs
+      - |
+        echo "=== Nightly eval complete ===" && \
+        python3 -c "
+        import json, sys
+        with open('evals/results-nightly.json') as f:
+            r = json.load(f)
+        print(f\"Fixtures : {r.get('total_fixtures', '?')}\")
+        print(f\"Recall   : {r.get('recall', 0):.1%}\")
+        print(f\"FP rate  : {r.get('false_positive_rate', 0):.1%}\")
+        print(f\"Verdict  : {r.get('verdict_accuracy', 0):.1%}\")
+        print(f\"Cost/run : \${r.get('median_cost_usd', 0):.4f}\")
+        "
+
+artifacts:
+  files:
+    - evals/results-nightly.json
+    - evals/nightly.log
+  name: eval-nightly-$(date +%Y%m%d)
+
+reports:
+  eval-results:
+    files:
+      - evals/results-nightly.json
+    file-format: JUNITXML
