@@ -344,6 +344,40 @@ def test_run_review_persists_findings_to_db(
     mock_insert.assert_called_once_with(_RUN_ID, expected_findings)
 
 
+# ── Graph timeout ────────────────────────────────────────────────────────────
+
+@patch("app.worker.tasks._GRAPH_TIMEOUT_SECONDS", 0)
+@patch("app.worker.tasks._update_run_status")
+@patch("app.worker.tasks._emit_event")
+@patch("app.worker.tasks._insert_findings")
+@patch("app.worker.tasks.compiled_graph")
+@patch("app.core.supabase.get_service_client")
+@patch("app.core.github.create_check_run", return_value=55)
+@patch("app.core.github.update_check_run")
+def test_run_review_times_out_and_marks_run_failed(
+    _mock_update_cr, _mock_create, mock_sb, mock_graph,
+    _mock_insert, _mock_emit, mock_update_status
+) -> None:
+    mock_sb.return_value = _make_sb_mock()
+
+    def _slow_stream(*_args, **_kwargs):
+        yield _graph_result()  # one real chunk so deadline check triggers on next iteration
+
+    mock_graph.stream.side_effect = _slow_stream
+
+    with pytest.raises(TimeoutError):
+        run_review(
+            run_id=_RUN_ID, project_id=_PROJECT_ID, installation_id=None,
+            repo_full_name=_REPO, pr_url=_PR_URL, pr_head_sha=_PR_HEAD, pr_base_sha=_PR_BASE,
+            locale="en", enabled_specialists=["security"],
+        )
+
+    failed_call = next(
+        (c for c in mock_update_status.call_args_list if c.args[1] == "failed"), None
+    )
+    assert failed_call is not None, "run should be marked failed on timeout"
+
+
 # ── Failed run saves partial cost ─────────────────────────────────────────────
 
 @patch("app.worker.tasks._update_run_status")

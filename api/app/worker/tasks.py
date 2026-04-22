@@ -6,7 +6,11 @@ No Celery dependency — plain Python function.
 
 import contextlib
 import logging
+import time
 from datetime import UTC, datetime
+
+# 10 minutes — keeps Lambda well within its 15-minute hard timeout.
+_GRAPH_TIMEOUT_SECONDS = 600
 
 from app.graph.graph import compiled_graph
 from app.graph.state import ReviewState
@@ -148,7 +152,10 @@ def run_review(
 
         # Stream instead of invoke so token counts accumulate before any exception propagates.
         result: dict = {}  # type: ignore[type-arg]
+        deadline = time.monotonic() + _GRAPH_TIMEOUT_SECONDS
         for chunk in compiled_graph.stream(state, stream_mode="values"):
+            if time.monotonic() > deadline:
+                raise TimeoutError(f"Review timed out after {_GRAPH_TIMEOUT_SECONDS}s")
             result = chunk
             total_input = chunk.get("total_input_tokens", 0)
             total_output = chunk.get("total_output_tokens", 0)
