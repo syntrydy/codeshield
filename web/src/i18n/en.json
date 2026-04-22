@@ -25,6 +25,7 @@
       "home": "Home",
       "projects": "Projects",
       "pullRequests": "Pull Requests",
+      "runs": "Runs",
       "settings": "Settings",
       "docs": "Docs",
       "systemStatus": "System Status",
@@ -36,7 +37,7 @@
       "pendingReviews": "Pending Reviews",
       "pendingReviewsSub": "awaiting specialist analysis",
       "totalRuns": "Total Runs",
-      "totalRunsSub": "completed reviews",
+      "totalRunsSub": "reviews run",
       "totalCost": "Total Cost",
       "totalCostSub": "AI review spend"
     },
@@ -46,7 +47,7 @@
       "colFindings": "Specialist Findings",
       "colStatus": "Status",
       "processing": "Processing analysis...",
-      "noRuns": "No runs yet. Install the GitHub App to get started."
+      "noRuns": "No runs yet. Open a pull request to trigger your first review."
     },
     "install": {
       "headline": "Connect your first repository",
@@ -90,7 +91,9 @@
     "file": "File",
     "severity": "Severity",
     "confidence": "Confidence",
-    "specialist": "Specialist"
+    "specialist": "Specialist",
+    "tokensIn": "in",
+    "tokensOut": "out"
   },
   "severity": {
     "critical": "Critical",
@@ -135,6 +138,38 @@
       "en": "English",
       "fr": "Français"
     }
+  },
+  "allRuns": {
+    "breadcrumb": "Overview / Runs",
+    "title": "Runs",
+    "subtitle": "All pull request reviews across your repositories",
+    "filterAll": "All",
+    "allProjects": "All projects",
+    "colProject": "Project",
+    "colPR": "Pull Request",
+    "colStatus": "Status",
+    "colCommit": "Commit",
+    "colDuration": "Duration",
+    "colCost": "Cost",
+    "colTriggered": "Triggered",
+    "view": "View",
+    "emptyTitle": "No runs yet",
+    "emptySubtext": "Open a pull request on a connected repository to trigger your first review.",
+    "noMatch": "No runs match the selected filters.",
+    "clearFilters": "Clear filters"
+  },
+  "projects": {
+    "breadcrumb": "Overview / Projects",
+    "title": "Projects",
+    "subtitle": "Repositories connected to CodeShield",
+    "addRepo": "Add repository",
+    "specialists": "Specialists",
+    "viewRuns": "View runs",
+    "emptyTitle": "No repositories connected",
+    "emptySubtext": "Install the GitHub App to connect your first repository."
+  },
+  "githubCallback": {
+    "processing": "Finishing GitHub App installation…"
   },
   "common": {
     "loading": "Loading…",

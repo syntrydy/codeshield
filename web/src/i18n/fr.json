@@ -25,6 +25,7 @@
       "home": "Accueil",
       "projects": "Projets",
       "pullRequests": "Pull Requests",
+      "runs": "Runs",
       "settings": "Paramètres",
       "docs": "Documentation",
       "systemStatus": "Statut système",
@@ -36,7 +37,7 @@
       "pendingReviews": "Revues en attente",
       "pendingReviewsSub": "analyse en cours",
       "totalRuns": "Exécutions totales",
-      "totalRunsSub": "revues terminées",
+      "totalRunsSub": "revues effectuées",
       "totalCost": "Coût total",
       "totalCostSub": "dépenses de revue IA"
     },
@@ -46,7 +47,7 @@
       "colFindings": "Résultats spécialisés",
       "colStatus": "Statut",
       "processing": "Analyse en cours...",
-      "noRuns": "Aucune exécution. Installez l'application GitHub pour commencer."
+      "noRuns": "Aucun run pour l'instant. Ouvrez une pull request pour déclencher votre première revue."
     },
     "install": {
       "headline": "Connectez votre premier dépôt",
@@ -90,7 +91,9 @@
     "file": "Fichier",
     "severity": "Sévérité",
     "confidence": "Confiance",
-    "specialist": "Spécialiste"
+    "specialist": "Spécialiste",
+    "tokensIn": "in",
+    "tokensOut": "out"
   },
   "severity": {
     "critical": "Critique",
@@ -135,6 +138,38 @@
       "en": "English",
       "fr": "Français"
     }
+  },
+  "allRuns": {
+    "breadcrumb": "Vue d'ensemble / Runs",
+    "title": "Runs",
+    "subtitle": "Toutes les revues de pull requests sur vos dépôts",
+    "filterAll": "Tous",
+    "allProjects": "Tous les projets",
+    "colProject": "Projet",
+    "colPR": "Pull Request",
+    "colStatus": "Statut",
+    "colCommit": "Commit",
+    "colDuration": "Durée",
+    "colCost": "Coût",
+    "colTriggered": "Déclenché",
+    "view": "Voir",
+    "emptyTitle": "Aucun run pour l'instant",
+    "emptySubtext": "Ouvrez une pull request sur un dépôt connecté pour déclencher votre première revue.",
+    "noMatch": "Aucun run ne correspond aux filtres sélectionnés.",
+    "clearFilters": "Effacer les filtres"
+  },
+  "projects": {
+    "breadcrumb": "Vue d'ensemble / Projets",
+    "title": "Projets",
+    "subtitle": "Dépôts connectés à CodeShield",
+    "addRepo": "Ajouter un dépôt",
+    "specialists": "Spécialistes",
+    "viewRuns": "Voir les runs",
+    "emptyTitle": "Aucun dépôt connecté",
+    "emptySubtext": "Installez l'application GitHub pour connecter votre premier dépôt."
+  },
+  "githubCallback": {
+    "processing": "Finalisation de l'installation de l'application GitHub…"
   },
   "common": {
     "loading": "Chargement…",

@@ -49,6 +49,10 @@ export function RunDetailPage() {
           <span className="text-sm font-semibold text-white">PR #{run.pr_number}</span>
           <div className="ml-auto flex items-center gap-3 text-xs text-white/40">
             <span className="font-mono">{run.pr_head_sha.slice(0, 7)}</span>
+            <span className="font-mono" title={`${run.total_input_tokens.toLocaleString()} ${t("runDetail.tokensIn")} · ${run.total_output_tokens.toLocaleString()} ${t("runDetail.tokensOut")}`}>
+              {(run.total_input_tokens / 1000).toFixed(1)}k {t("runDetail.tokensIn")} · {(run.total_output_tokens / 1000).toFixed(1)}k {t("runDetail.tokensOut")}
+            </span>
+            <span className="text-white/20">·</span>
             <span>${run.total_cost_usd.toFixed(4)}</span>
           </div>
         </div>
