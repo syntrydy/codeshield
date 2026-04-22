@@ -10,31 +10,60 @@ const LOCALES = ["en", "fr"] as const;
 
 export function SettingsPage() {
   const { t } = useTranslation();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: fetchProjects,
   });
 
+  const projectList = projects ?? [];
+  const activeId = selectedId ?? projectList[0]?.id ?? null;
+  const activeProject = projectList.find((p) => p.id === activeId) ?? null;
+
   return (
     <AppLayout
       activePage="settings"
       breadcrumb={t("settings.breadcrumb")}
-      hasProjects={(projects?.length ?? 0) > 0}
+      hasProjects={projectList.length > 0}
     >
-      <main className="p-8 max-w-[960px] w-full mx-auto space-y-6">
-        <h2 className="text-2xl font-black tracking-tighter text-zinc-950">{t("settings.title")}</h2>
+      <main className="p-8 w-full space-y-6">
 
         {isLoading ? (
           <SettingsSkeleton />
-        ) : !projects || projects.length === 0 ? (
+        ) : projectList.length === 0 ? (
           <div className="bg-white border border-zinc-200 rounded-lg px-6 py-12 text-center text-sm text-zinc-500">
             {t("settings.noProjects")}
           </div>
         ) : (
-          projects.map((project) => (
-            <ProjectSettingsCard key={project.id} project={project} />
-          ))
+          <>
+            {/* Project selector tabs */}
+            <div className="flex items-center gap-1 bg-zinc-100 rounded-lg p-0.5 w-fit">
+              {projectList.map((p) => {
+                const repo = p.github_repo_full_name.split("/")[1];
+                const isActive = p.id === activeId;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelectedId(p.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isActive
+                        ? "bg-white text-zinc-950 shadow-sm"
+                        : "text-zinc-500 hover:text-zinc-700"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[14px]">code_blocks</span>
+                    {repo}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Settings card for selected project */}
+            {activeProject && (
+              <ProjectSettingsCard key={activeProject.id} project={activeProject} />
+            )}
+          </>
         )}
       </main>
     </AppLayout>
@@ -92,43 +121,43 @@ function ProjectSettingsCard({ project }: { project: Project }) {
       </div>
 
       {/* Fields */}
-      <div className="px-6 py-6 space-y-6">
+      <div className="px-6 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Specialists */}
-        <div>
-          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
-            {t("settings.project.specialists")}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {SPECIALISTS.map((s) => {
-              const active = specialists.includes(s);
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => toggleSpecialist(s)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
-                    active
-                      ? "bg-zinc-950 text-white border-zinc-950"
-                      : "bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400 hover:text-zinc-950"
-                  }`}
-                >
-                  {active && (
-                    <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                      check
-                    </span>
-                  )}
-                  {t(`settings.specialists.${s}`)}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Threshold + Locale */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {/* Specialists */}
           <div>
-            <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider block mb-2">
+            <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
+              {t("settings.project.specialists")}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {SPECIALISTS.map((s) => {
+                const active = specialists.includes(s);
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => toggleSpecialist(s)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                      active
+                        ? "bg-zinc-950 text-white border-zinc-950"
+                        : "bg-white text-zinc-500 border-zinc-200 hover:border-zinc-400 hover:text-zinc-950"
+                    }`}
+                  >
+                    {active && (
+                      <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                        check
+                      </span>
+                    )}
+                    {t(`settings.specialists.${s}`)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Threshold */}
+          <div>
+            <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider block mb-3">
               {t("settings.project.threshold")}
             </label>
             <div className="relative">
@@ -147,8 +176,9 @@ function ProjectSettingsCard({ project }: { project: Project }) {
             </div>
           </div>
 
+          {/* Locale */}
           <div>
-            <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider block mb-2">
+            <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider block mb-3">
               {t("settings.project.locale")}
             </label>
             <div className="relative">
@@ -166,6 +196,7 @@ function ProjectSettingsCard({ project }: { project: Project }) {
               </span>
             </div>
           </div>
+
         </div>
       </div>
 
