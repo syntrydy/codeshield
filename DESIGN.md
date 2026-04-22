@@ -89,9 +89,9 @@ The v1 permission model is deliberately simple: the user who installs the App is
    - Matches `repository.full_name` to a Project row.
    - Applies the debounce rule (see §9.4): if a run for this PR was queued within the last 60 seconds, cancel the prior run and reschedule.
    - Creates a `runs` row with `status='queued'` and `project_id` set.
-   - Enqueues the review task on Celery.
+   - Enqueues the review task via `dispatch_review()` (SQS in production, daemon thread locally).
    - Returns 202 within ~100ms.
-4. A Celery worker picks up the task.
+4. An AWS Lambda invocation picks up the SQS message.
 5. The worker creates a Check Run on GitHub via the Checks API with `status='queued'` (visible in the PR UI immediately).
 6. The worker updates the Check Run to `status='in_progress'` and invokes the LangGraph review pipeline (see §6).
 7. As the graph executes, the worker emits events to the `run_events` table. The project owner, viewing the run in the dashboard, sees events stream in via Supabase Realtime.
@@ -120,19 +120,19 @@ The v1 permission model is deliberately simple: the user who installs the App is
 
 **Browser (React + shadcn + Vite + TypeScript).** Hosted on CloudFront + S3. Authenticates via Supabase Auth (GitHub OAuth). Talks to the FastAPI backend for mutations and to Supabase directly for queries and Realtime subscriptions. Internationalized via `react-i18next` with `en` and `fr` locales.
 
-**FastAPI API service (Python 3.12 on ECS Fargate).** Handles user-facing HTTP routes. Verifies Supabase JWTs on every request. Creates runs, exposes project CRUD, handles the GitHub App installation callback. Does *not* execute the LLM pipeline — it enqueues work and returns fast.
+**FastAPI API service (Python 3.12 on AWS App Runner).** Handles user-facing HTTP routes. Verifies Supabase JWTs on every request. Creates runs, exposes project CRUD, handles the GitHub App installation callback. Does *not* execute the LLM pipeline — it dispatches work to SQS and returns fast.
 
-**Celery worker service (Python 3.12 on ECS Fargate, separate task definition).** Consumes jobs from Redis. Runs the LangGraph review pipeline. Writes to Supabase with the service-role client. Posts Check Runs to GitHub. The only component that talks to Anthropic.
+**AWS Lambda worker (Python 3.12, container image).** Triggered by SQS. Runs the LangGraph review pipeline. Writes to Supabase with the service-role client. Posts Check Runs to GitHub. The only component that talks to Anthropic. Maximum 15-minute execution time; our internal timeout is 10 minutes.
 
-**FastAPI webhook endpoint (same service as API, separate route namespace).** Receives GitHub webhooks. Verifies HMAC signatures. Does not require user JWT. Enqueues Celery tasks. Lives at `/webhooks/github`.
+**FastAPI webhook endpoint (same App Runner service as API, separate route namespace).** Receives GitHub webhooks. Verifies HMAC signatures. Does not require user JWT. Sends messages to SQS. Lives at `/webhooks/github`.
 
-**Redis (ElastiCache).** Celery broker and backend. Idempotency set for webhook delivery IDs. Installation token cache (55-minute TTL).
+**ElastiCache Serverless (Redis-compatible).** Idempotency set for webhook delivery IDs. Installation token cache (55-minute TTL). Pay-per-use; no always-on broker.
 
 **Supabase (hosted, us-east-1 to match AWS).** Managed Postgres with `pgvector`, Supabase Auth (GitHub OAuth provider enabled), Supabase Realtime. RLS enforced on all user-facing tables.
 
 **S3.** Two buckets: `artifacts` (PR diffs keyed by commit SHA, generated reports, 7-day lifecycle policy) and `terraform-state` (remote state with DynamoDB lock).
 
-**AWS Secrets Manager.** The GitHub App private key (`.pem`), webhook shared secret, Supabase service-role key, Anthropic key, LangSmith key. Injected into ECS tasks via the task role.
+**AWS Secrets Manager.** The GitHub App private key (`.pem`), webhook shared secret, Supabase service-role key, Anthropic key, LangSmith key. Injected into App Runner via the instance IAM role; Lambda reads them on cold start via `_bootstrap_secrets()`.
 
 **LangSmith (SaaS).** Traces, prompt Hub, eval dataset and runs.
 
@@ -141,7 +141,7 @@ The v1 permission model is deliberately simple: the user who installs the App is
 ### 3.2 Data flows
 
 **Write path (review trigger to stored findings):**
-GitHub webhook → FastAPI webhook endpoint → Redis (Celery broker) → Celery worker → LangGraph execution → Supabase (run_events, runs, findings) → GitHub Check Run API.
+GitHub webhook → FastAPI webhook endpoint (App Runner) → SQS → Lambda worker → LangGraph execution → Supabase (run_events, runs, findings) → GitHub Check Run API.
 
 **Read path (dashboard):**
 Browser → Supabase PostgREST (direct query with user JWT, RLS enforced) for runs, findings, projects.
@@ -157,8 +157,8 @@ Browser → FastAPI with JWT in `Authorization: Bearer <token>` header → FastA
 **Why Supabase for Postgres + Auth + Realtime instead of RDS + Cognito + SSE?**
 Three infrastructure concerns collapse into one managed service. The Realtime piece is the biggest win: workers write `run_events` rows; the browser subscribes to `postgres_changes`. Event persistence and fan-out happen in a single write, with no SSE sticky sessions, no Redis pub/sub for user-facing streaming, and no custom WebSocket server. The trade-off is cross-cloud latency, mitigated by region-matching to `us-east-1`.
 
-**Why Celery and not FastAPI BackgroundTasks or Lambda?**
-Reviews run 30 seconds to several minutes. FastAPI BackgroundTasks run in the same process and would block API health. Lambda has a 15-minute ceiling (tight for large PRs) and makes local development awkward. Celery on ECS gives us persistent workers, easy concurrency tuning, and a familiar local development story via Docker Compose.
+**Why SQS + Lambda instead of Celery + ECS?**
+Reviews run 30 seconds to several minutes. FastAPI BackgroundTasks run in the same process and would block API health. Celery requires always-on ECS tasks (minimum ~$30/month) plus a Redis cluster. SQS + Lambda is pay-per-invocation: zero cost when idle, scales instantly, and eliminates the broker entirely. Lambda's 15-minute hard limit is workable with a 10-minute internal timeout. Local development uses a daemon thread (`TASK_BACKEND=local`) with the same `run_review()` function, keeping the local story simple.
 
 **Why a GitHub App instead of OAuth tokens?**
 OAuth gives access tokens tied to a user; they expire quickly, carry the user's full repo scope, and cannot post Check Runs as a distinct identity. A GitHub App has its own identity (reviews appear as "AI Code Review Agent"), fine-grained permissions (only read code, write checks, read PRs), short-lived installation tokens (better security posture), and webhook support (the core of the product). OAuth is a dev shortcut; the App is the correct architecture.
@@ -625,7 +625,7 @@ Redis set operation: `SETNX delivery:<id> 1 EX 86400`. If it returns 0, the deli
 Before enqueueing a review for a `pull_request.synchronize`:
 
 1. Query Redis for `pr_debounce:<project_id>:<pr_number>`.
-2. If present and within 60 seconds, cancel any queued Celery task for this PR (revoke by task ID stored in Redis) and reschedule with `countdown=60`.
+2. If present and within 60 seconds, the webhook handler returns 200 (the already-queued SQS message will process after the debounce window expires).
 3. Store the new task ID under the debounce key with 60-second TTL.
 
 The effect: five rapid pushes result in one review after the last push settles for 60 seconds.
@@ -776,9 +776,9 @@ The dashboard's run detail view deep-links to the LangSmith trace URL, construct
 
 ### 12.2 CloudWatch
 
-ECS task logs go to CloudWatch Logs. Log groups:
-- `/ecs/code-review-api`
-- `/ecs/code-review-worker`
+App Runner and Lambda emit logs to CloudWatch Logs. Log groups:
+- `/apprunner/code-review-api` (App Runner service)
+- `/aws/lambda/code-review-worker` (Lambda worker)
 
 Metrics we emit:
 - `review.duration.ms` (per completed run)
@@ -795,7 +795,7 @@ Every log line is JSON with at minimum: `timestamp`, `level`, `message`, `run_id
 
 ### 12.4 Alerting (v2 — not in v1)
 
-Notes for future: CloudWatch alarms on ECS task failures, Dead Letter Queue depth, LangSmith-reported error rate > 5%, p95 review duration > 5 minutes.
+Notes for future: CloudWatch alarms on Lambda errors, Dead Letter Queue depth, LangSmith-reported error rate > 5%, p95 review duration > 5 minutes.
 
 ## 13. Evaluation methodology
 
@@ -850,21 +850,21 @@ Regression gate: PRs cannot merge to `main` if they cause >5% drop in recall or 
 | Anthropic 5xx | Exponential backoff, 3 retries | If still failing: specialist marked failed, run continues |
 | GitHub API rate limit (installation) | Back off to next hour | Reviews queued; user sees "waiting for GitHub" |
 | GitHub 5xx on Check Run post | Exponential backoff, 5 retries | If still failing: run marked completed, Check Run missing (rare, acceptable) |
-| Supabase unavailable | Worker cannot write events | Task fails, Celery retries with backoff |
+| Supabase unavailable | Worker cannot write events | Task fails; SQS DLQ retains message for manual replay |
 | One specialist throws | `specialist.failed` event emitted | Other specialists continue; aggregator works with what's present |
 | Planner throws | Run marked failed | No partial review; user notified in dashboard |
 | Aggregator throws | Run marked failed | Partial findings lost for display (retrievable from `findings` table) |
-| Celery worker crash mid-run | Celery retries task | Task is idempotent on run_id — duplicate events acceptable |
+| Lambda crash mid-run | SQS retries (up to 3×) | `run_review()` checks existing run status at entry — idempotent |
 
 ### 14.2 Timeout budget
 
-Per-run hard cap: 5 minutes. Enforced via Celery's `task_time_limit`. Beyond this, the task is killed and the run is marked `failed` with `error_message='Timeout exceeded'`.
+Per-run hard cap: 10 minutes. Enforced by a deadline check inside `run_review()` (Lambda's hard limit is 15 minutes; the 10-minute internal timeout gives 5 minutes for cleanup). Beyond this, a `TimeoutError` is raised and the run is marked `failed`.
 
 Per-Anthropic-call timeout: 60 seconds. Per-GitHub-API-call timeout: 15 seconds.
 
 ### 14.3 Retry policy
 
-- Celery task retries: 3, exponential backoff starting at 30 seconds.
+- SQS message redelivery: up to 3 attempts (configured on the queue), with the idempotency guard in `run_review()` preventing duplicate work on retry.
 - Anthropic retries: 3, exponential with jitter, only on 429 and 5xx.
 - GitHub retries: 5 for Check Run posts, 3 for other operations.
 - Webhook processing: no retry — GitHub retries on non-2xx.
@@ -873,7 +873,7 @@ Per-Anthropic-call timeout: 60 seconds. Per-GitHub-API-call timeout: 15 seconds.
 
 ### 15.1 Secrets handling
 
-All secrets in AWS Secrets Manager, injected into ECS tasks via the task role. Never in `.env` files that deploy, never in Docker images, never in git.
+All secrets in AWS Secrets Manager, read via IAM instance role (App Runner) or execution role (Lambda). Never in `.env` files that deploy, never in Docker images, never in git.
 
 Secrets:
 - `github/app_id`, `github/private_key`, `github/webhook_secret`
@@ -904,7 +904,7 @@ No credential flows in more than one direction. Each boundary uses the minimum-p
 
 - User can only see their own data (enforced by RLS)
 - User can only configure projects under their own installations (enforced by FastAPI after installation ownership check)
-- Worker bypasses RLS via service-role (trusted component inside VPC)
+- Worker bypasses RLS via service-role (trusted component — Lambda runs inside AWS, not reachable from the public internet)
 - Webhooks are authenticated as GitHub (signature), not as any user
 
 ### 15.5 Known v1 limitations (documented, not exploits)
@@ -937,25 +937,20 @@ Specialists use Sonnet except Style (Haiku). The Style specialist is 80% cheaper
 
 ### 17.1 AWS resources
 
-**Network:**
-- VPC with 2 public subnets, 2 private subnets, NAT Gateway in one public subnet
-- Security groups: ALB (public, 443 only), ECS tasks (private, from ALB only), ElastiCache (private, from ECS only)
+**No VPC required.** All compute (App Runner, Lambda) is managed by AWS and communicates to Supabase and GitHub over the public internet via HTTPS. ElastiCache Serverless has a public endpoint secured by TLS + auth token.
 
 **Compute:**
-- ECS cluster: `code-review-prod`
-- Service: `api` — 2 tasks, Fargate 512 CPU / 1024 MB
-- Service: `worker` — 2 tasks, Fargate 1024 CPU / 2048 MB
-- Both services have auto-scaling based on CPU (50% target)
+- App Runner service: `code-review-api` — auto-scales from 0, 1 vCPU / 2 GB RAM
+- Lambda function: `code-review-worker` — container image, 3 GB RAM, 15-minute timeout, triggered by SQS
+- SQS queue: `code-review-review-queue` (standard) with DLQ (`code-review-review-dlq`, 3 retries)
 
 **Data:**
-- ElastiCache Redis: cache.t4g.micro, single node (v1; Multi-AZ in v2)
+- ElastiCache Serverless (Redis-compatible): installation token cache + webhook idempotency set. Pay-per-use, no minimum.
 - S3 buckets: `code-review-artifacts-<env>`, `code-review-terraform-state-<env>`
 - DynamoDB: `code-review-terraform-locks`
 
-**Ingress:**
-- Application Load Balancer, HTTPS only (ACM cert)
-- ALB target groups: one for API, one for webhooks (both point to the API service, different path patterns)
-- Route 53: `api.<domain>` → ALB
+**Frontend:**
+- CloudFront distribution → S3 bucket (static React build). Custom domain via ACM cert attached to CloudFront.
 
 **Secrets:** AWS Secrets Manager entries per §15.1.
 
@@ -965,9 +960,12 @@ Specialists use Sonnet except Style (Haiku). The Style specialist is 80% cheaper
 
 1. Push to `main` on GitHub
 2. CodeBuild `test` runs lint + tests + fast eval
-3. If green, CodeBuild `build-deploy` builds Docker images, pushes to ECR, runs `aws ecs update-service --force-new-deployment` for both API and worker
-4. ECS performs rolling deploy (50% healthy minimum)
-5. Post-deploy smoke test: hit `/health`, post a known-webhook delivery (test PR in a sentinel repo)
+3. If green, CodeBuild `build-deploy`:
+   - Builds Docker images for API and Lambda worker
+   - Pushes to ECR
+   - Runs `aws lambda update-function-code` (Lambda picks up image immediately)
+   - Runs `aws apprunner start-deployment` (App Runner performs rolling replace with zero downtime)
+4. Post-deploy smoke test: hit `/health`, post a known-webhook delivery (test PR in a sentinel repo)
 
 Infrastructure changes:
 1. PR against `infra/` → CodeBuild `terraform` runs `terraform plan` and posts to PR
@@ -1012,7 +1010,7 @@ Fast eval: 3 PRs from the dataset, blocks merge on >10% regression.
 
 Trigger: push to `main`.
 
-Builds Docker images, pushes to ECR, triggers ECS rolling deploy for both services.
+Builds Docker images, pushes to ECR, updates the Lambda function image, and triggers an App Runner deployment.
 
 ### 18.3 CodeBuild project: `terraform`
 
@@ -1032,7 +1030,7 @@ Every graph node has a unit test: input state → expected output state, with LL
 ### 19.2 Integration tests
 
 - **Graph end-to-end:** full review on a fixture PR (checked-in diffs, no live GitHub), stubbed LLM returning canned findings. Asserts correct event sequence, correct finding aggregation, correct error handling on one-specialist-fails.
-- **Webhook handler:** POST real GitHub payloads (captured from GitHub's docs examples) to the endpoint, assert correct DB state changes and Celery queue state.
+- **Webhook handler:** POST real GitHub payloads (captured from GitHub's docs examples) to the endpoint, assert correct DB state changes and SQS dispatch call.
 - **RLS:** insert rows as user A, query as user B with a different JWT, assert empty results.
 
 ### 19.3 Eval tests
@@ -1042,7 +1040,7 @@ Part of the CI pipeline. See §13.
 ### 19.4 Manual verification
 
 The scaffolding is finished when:
-- `docker compose up` brings up API + worker + Redis healthy
+- `docker compose up` brings up API + Redis healthy (worker is Lambda — local dev uses `TASK_BACKEND=local` daemon thread)
 - Visiting `http://localhost:5173` loads the React app
 - Signing in via GitHub OAuth lands on the dashboard
 - Health endpoint returns 200
@@ -1092,7 +1090,9 @@ The scaffolding is finished when:
 - `api/app/graph/state.py` — LangGraph state schema
 - `api/app/graph/nodes.py` — planner, specialists, aggregator
 - `api/app/graph/graph.py` — graph assembly
-- `api/app/worker/tasks.py` — Celery task wrapping the graph
+- `api/app/worker/tasks.py` — `run_review()` function (plain Python, no broker)
+- `api/app/worker/dispatch.py` — `dispatch_review()` (SQS in prod, daemon thread locally)
+- `api/app/worker/lambda_handler.py` — Lambda entrypoint, bootstraps secrets on cold start
 - `api/app/webhooks/github.py` — webhook handler
 - `api/app/core/github.py` — App authentication, token minting, API client
 - `web/src/i18n/en.json` — English strings
