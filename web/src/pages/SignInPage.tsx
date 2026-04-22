@@ -57,7 +57,7 @@ export function SignInPage() {
       {/* Nav */}
       <header className="sticky top-0 w-full z-50 border-b border-zinc-200 bg-white/80 backdrop-blur-md">
         <nav className="flex items-center justify-between px-6 h-14 max-w-[1200px] mx-auto">
-          <div className="text-lg font-bold tracking-tighter text-zinc-900">CodeShield</div>
+          <img src="/logo.jpg" alt="CodeShield" className="h-10 w-auto" />
           <div className="hidden md:flex items-center gap-8">
             <a href="#specialists" className="text-zinc-500 text-sm hover:text-zinc-900 transition-colors">{t("landing.navHowItWorks")}</a>
             <a href="#pricing" className="text-zinc-500 text-sm hover:text-zinc-900 transition-colors">{t("landing.navPricing")}</a>
@@ -343,7 +343,7 @@ export function SignInPage() {
       <footer className="w-full border-t border-zinc-200 bg-white">
         <div className="flex flex-col md:flex-row items-center justify-between px-6 py-12 max-w-[1200px] mx-auto gap-4">
           <div className="flex flex-col gap-2">
-            <span className="text-sm font-semibold text-zinc-900">CodeShield</span>
+            <img src="/logo.jpg" alt="CodeShield" className="h-10 w-auto" />
             <p className="text-xs text-zinc-500">{t("landing.footerCopyright")}</p>
           </div>
           <div className="flex items-center gap-6 flex-wrap justify-center">

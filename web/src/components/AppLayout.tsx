@@ -52,18 +52,8 @@ export function AppLayout({ activePage, breadcrumb, hasProjects, children }: App
 
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 h-full w-60 bg-white border-r border-zinc-200 flex flex-col py-4 z-50">
-        <div className="px-6 mb-8">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-zinc-950 flex items-center justify-center rounded">
-              <span
-                className="material-symbols-outlined text-white text-sm"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                shield
-              </span>
-            </div>
-            <h1 className="text-xl font-black text-zinc-950 tracking-tighter">CodeShield</h1>
-          </div>
+        <div className="px-4 mb-8">
+          <img src="/logo.jpg" alt="CodeShield" className="h-14 w-auto" />
         </div>
 
         <nav className="flex-1 px-2 space-y-1">
