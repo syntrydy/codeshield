@@ -38,7 +38,7 @@ export function ProjectsPage() {
       breadcrumb={t("projects.breadcrumb")}
       hasProjects={(projects?.length ?? 0) > 0}
     >
-      <main className="p-8 max-w-[1280px] w-full mx-auto space-y-6">
+      <main className="p-8 w-full space-y-6">
 
         {/* Page header */}
         <div className="flex items-center justify-between">
@@ -155,7 +155,10 @@ function ProjectCard({ project, onEdit }: { project: Project; onEdit: (p: Projec
           <span className="material-symbols-outlined text-[12px]">call_split</span>
           {project.default_branch}
         </span>
-        <span className={`inline-flex items-center px-2 py-1 border rounded-full text-[11px] font-mono ${THRESHOLD_COLORS[project.severity_threshold] ?? THRESHOLD_COLORS.low}`}>
+        <span
+          className={`inline-flex items-center px-2 py-1 border rounded-full text-[11px] font-mono ${THRESHOLD_COLORS[project.severity_threshold] ?? THRESHOLD_COLORS.low}`}
+          aria-label={`${t("settings.project.threshold")}: ${t(`settings.threshold.${project.severity_threshold}`)}`}
+        >
           {t(`settings.threshold.${project.severity_threshold}`)}
         </span>
         <span className="inline-flex items-center gap-1 px-2 py-1 bg-zinc-50 border border-zinc-200 rounded-full text-[11px] font-mono text-zinc-600">
@@ -196,7 +199,7 @@ function ProjectCard({ project, onEdit }: { project: Project; onEdit: (p: Projec
           {new Date(project.created_at).toLocaleDateString()}
         </span>
         <Link
-          to={`/projects/${project.id}/runs`}
+          to={`/runs?project=${project.id}`}
           className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-950 hover:text-zinc-600 transition-colors"
         >
           {t("projects.viewRuns")}

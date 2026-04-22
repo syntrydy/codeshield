@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -28,6 +28,7 @@ type Props = {
 export function ProjectEditModal({ project, onClose }: Props) {
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   const {
     control,
@@ -62,11 +63,14 @@ export function ProjectEditModal({ project, onClose }: Props) {
   });
 
   useEffect(() => {
-    if (!project) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [project, onClose]);
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (project) {
+      dialog.showModal();
+    } else {
+      dialog.close();
+    }
+  }, [project]);
 
   if (!project) return null;
 
@@ -78,12 +82,14 @@ export function ProjectEditModal({ project, onClose }: Props) {
     "w-full bg-white border border-zinc-200 rounded-md px-3 py-2 text-sm text-zinc-950 focus:outline-none focus:border-zinc-400 transition-colors appearance-none cursor-pointer";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Panel */}
-      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+    <dialog
+      ref={dialogRef}
+      onCancel={onClose}
+      className="fixed inset-0 z-50 m-auto w-full max-w-lg rounded-xl shadow-2xl overflow-hidden p-0 bg-white backdrop:bg-black/40 backdrop:backdrop-blur-sm"
+      aria-label={t("settings.project.editTitle", { repo: project.github_repo_full_name })}
+    >
+      {/* Panel — dialog IS the panel */}
+      <div className="bg-white rounded-xl overflow-hidden">
 
         {/* Header */}
         <div className="px-6 py-4 border-b border-zinc-100 flex items-center gap-3">
@@ -220,6 +226,6 @@ export function ProjectEditModal({ project, onClose }: Props) {
           </div>
         </form>
       </div>
-    </div>
+    </dialog>
   );
 }

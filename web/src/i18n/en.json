@@ -91,12 +91,14 @@
   },
   "runDetail": {
     "title": "Run detail",
+    "breadcrumb": "Runs",
     "findings": "Findings",
     "events": "Events",
     "noFindings": "No findings.",
     "noEvents": "No events.",
     "file": "File",
     "severity": "Severity",
+    "status": "Status",
     "confidence": "Confidence",
     "specialist": "Specialist",
     "tokensIn": "in",
@@ -126,7 +128,8 @@
       "locale": "Review Output Language",
       "save": "Save changes",
       "saving": "Saving…",
-      "saved": "Saved"
+      "saved": "Saved",
+      "editTitle": "Edit {{repo}}"
     },
     "specialists": {
       "security": "Security",

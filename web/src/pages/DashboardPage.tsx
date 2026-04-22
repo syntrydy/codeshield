@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { fetchProjects, fetchRuns, type Project, type Run } from "../lib/api";
+import { fetchProjects, fetchRuns, fetchStats, type Project, type Run } from "../lib/api";
 import { AppLayout } from "../components/AppLayout";
 
 type RunWithProject = Run & { project: Project };
@@ -39,10 +39,19 @@ export function DashboardPage() {
     (q.data ?? []).map((r) => ({ ...r, project: projectList[i] }))
   );
 
+  const { data: stats } = useQuery({
+    queryKey: ["stats"],
+    queryFn: fetchStats,
+    enabled: !!projects,
+  });
+
   const totalProjects = projectList.length;
   const pendingReviews = allRuns.filter((r) => r.status === "queued" || r.status === "running").length;
+  const completedRuns = allRuns.filter((r) => r.status === "completed").length;
   const totalRuns = allRuns.filter((r) => ["completed", "failed", "cancelled"].includes(r.status)).length;
-  const totalCost = allRuns.reduce((sum, r) => sum + r.total_cost_usd, 0);
+  const totalCost = allRuns.reduce((sum, r) => sum + (Number(r.total_cost_usd) || 0), 0);
+  const successRate = totalRuns > 0 ? Math.round((completedRuns / totalRuns) * 100) : 0;
+  const avgCost = totalRuns > 0 ? totalCost / totalRuns : 0;
 
   const recentRuns = [...allRuns]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -84,9 +93,9 @@ export function DashboardPage() {
       ) : projects !== undefined && projects.length === 0 ? (
         <InstallScreen installUrl={installUrl} />
       ) : (
-        <main className="p-8 max-w-[1280px] w-full mx-auto space-y-8">
+        <main className="p-8 w-full space-y-8">
 
-          {/* Stats */}
+          {/* Stats — row 1 */}
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard
               label={t("dashboard.stats.totalProjects")}
@@ -112,6 +121,36 @@ export function DashboardPage() {
               value={`$${totalCost.toFixed(4)}`}
               icon="bolt"
               sub={t("dashboard.stats.totalCostSub")}
+            />
+          </section>
+
+          {/* Stats — row 2 */}
+          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard
+              label={t("dashboard.stats.successRate")}
+              value={`${successRate}%`}
+              icon="verified"
+              sub={t("dashboard.stats.successRateSub")}
+              highlight={successRate > 0 && successRate < 50 ? "critical" : successRate >= 50 ? "normal" : undefined}
+            />
+            <StatCard
+              label={t("dashboard.stats.avgCost")}
+              value={`$${avgCost.toFixed(4)}`}
+              icon="payments"
+              sub={t("dashboard.stats.avgCostSub")}
+            />
+            <StatCard
+              label={t("dashboard.stats.totalFindings")}
+              value={stats?.total_findings ?? "—"}
+              icon="search_insights"
+              sub={t("dashboard.stats.totalFindingsSub")}
+            />
+            <StatCard
+              label={t("dashboard.stats.criticalIssues")}
+              value={stats?.critical_findings ?? "—"}
+              icon="crisis_alert"
+              sub={t("dashboard.stats.criticalIssuesSub")}
+              highlight={(stats?.critical_findings ?? 0) > 0 ? "critical" : undefined}
             />
           </section>
 
@@ -186,7 +225,7 @@ export function DashboardPage() {
                       return (
                         <Link
                           key={project.id}
-                          to={`/projects/${project.id}/runs`}
+                          to={`/runs?project=${project.id}`}
                           className="flex items-center justify-between p-3 hover:bg-zinc-50 transition-all rounded group"
                         >
                           <div className="flex items-center gap-3">
@@ -240,16 +279,7 @@ export function DashboardPage() {
         </main>
       )}
 
-      {/* FAB — only when projects exist */}
-      {projects !== undefined && projects.length > 0 && (
-        <a
-          href={installUrl}
-          className="fixed bottom-8 right-8 w-12 h-12 bg-zinc-950 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform active:scale-95 z-50"
-          title={t("dashboard.installCta")}
-        >
-          <span className="material-symbols-outlined">add</span>
-        </a>
-      )}
+
     </AppLayout>
   );
 }
@@ -297,7 +327,10 @@ function RunStatusBadge({ status }: { status: string }) {
   };
   const { label, cls } = map[status] ?? { label: status.toUpperCase(), cls: "bg-zinc-100 text-zinc-600 border border-zinc-200" };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-mono font-medium ${cls}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-sm text-[10px] font-mono font-medium ${cls}`}
+      aria-label={`Status: ${label}`}
+    >
       {label}
     </span>
   );
@@ -315,7 +348,7 @@ function healthStatus(status?: string): { label: string; colorClass: string; pct
 
 function LoadingSkeleton() {
   return (
-    <main className="p-8 max-w-[1280px] w-full mx-auto space-y-8 animate-pulse">
+    <main className="p-8 w-full space-y-8 animate-pulse">
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[...Array(4)].map((_, i) => (
           <div key={i} className="bg-white border border-zinc-200 p-5 rounded-lg space-y-3">

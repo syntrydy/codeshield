@@ -91,12 +91,14 @@
   },
   "runDetail": {
     "title": "Détail de l'exécution",
+    "breadcrumb": "Exécutions",
     "findings": "Résultats",
     "events": "Événements",
     "noFindings": "Aucun résultat.",
     "noEvents": "Aucun événement.",
     "file": "Fichier",
     "severity": "Sévérité",
+    "status": "Statut",
     "confidence": "Confiance",
     "specialist": "Spécialiste",
     "tokensIn": "in",
@@ -126,7 +128,8 @@
       "locale": "Langue de sortie des revues",
       "save": "Enregistrer",
       "saving": "Enregistrement…",
-      "saved": "Enregistré"
+      "saved": "Enregistré",
+      "editTitle": "Modifier {{repo}}"
     },
     "specialists": {
       "security": "Sécurité",
