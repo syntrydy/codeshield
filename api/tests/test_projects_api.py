@@ -57,7 +57,7 @@ def anyio_backend() -> str:
 def fake_anon_client() -> MagicMock:
     client = MagicMock()
     chain = client.table.return_value
-    for method in ("select", "eq", "order", "limit", "maybe_single", "update"):
+    for method in ("select", "eq", "order", "limit", "maybe_single", "update", "delete"):
         getattr(chain, method).return_value = chain
     return client
 
@@ -131,6 +131,30 @@ async def test_update_project_empty_body_returns_422(fake_anon_client: MagicMock
                 headers={"Authorization": f"Bearer {_make_token()}"},
             )
     assert resp.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_delete_project_returns_204(fake_anon_client: MagicMock) -> None:
+    fake_anon_client.table.return_value.execute.return_value = MagicMock(data=[_PROJECT])
+    with patch("app.api.projects.get_service_client", return_value=fake_anon_client):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.delete(
+                f"/projects/{_PROJECT['id']}",
+                headers={"Authorization": f"Bearer {_make_token()}"},
+            )
+    assert resp.status_code == 204
+
+
+@pytest.mark.anyio
+async def test_delete_project_not_found_returns_404(fake_anon_client: MagicMock) -> None:
+    fake_anon_client.table.return_value.execute.return_value = MagicMock(data=[])
+    with patch("app.api.projects.get_service_client", return_value=fake_anon_client):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.delete(
+                "/projects/00000000-0000-0000-0000-000000000000",
+                headers={"Authorization": f"Bearer {_make_token()}"},
+            )
+    assert resp.status_code == 404
 
 
 @pytest.mark.anyio

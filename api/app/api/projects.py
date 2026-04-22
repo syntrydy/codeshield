@@ -112,6 +112,28 @@ def get_project(project_id: UUID, user_id: str = Depends(current_user_id)) -> di
     return resp.data  # type: ignore[return-value]
 
 
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_project(
+    project_id: UUID,
+    user_id: str = Depends(current_user_id),
+) -> None:
+    """Remove a project and all its associated runs from the database.
+
+    This is the user-initiated disconnect path. GitHub App uninstall events
+    also remove projects via the webhook handler.
+    """
+    client = get_service_client()
+    resp = (
+        client.table("projects")
+        .delete()
+        .eq("id", str(project_id))
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not resp.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+
 @router.patch("/{project_id}", response_model=ProjectResponse)
 def update_project(
     project_id: UUID,
