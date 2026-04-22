@@ -7,8 +7,8 @@ environment = "prod"
 availability_zones = ["us-east-1a", "us-east-1b"]
 
 # ACM certificate ARN for the ALB HTTPS listener.
-# Use scripts/request-cert.sh with a subdomain of an existing domain you own:
-#   DOMAIN=codeshield.yourdomain.com ROUTE53_ZONE_ID=ZXXXXX ./scripts/request-cert.sh
+# Run scripts/request-cert.sh — it prints the DNS CNAME to add at your provider:
+#   DOMAIN=codeshield.yourdomain.com ./scripts/request-cert.sh
 acm_certificate_arn = "arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERT_ID"
 
 # Docker image tag to deploy. In CI this is set to the commit SHA automatically.
