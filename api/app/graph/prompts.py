@@ -1,4 +1,8 @@
-"""LangSmith Hub prompt loader with in-memory cache and bundled fallbacks for outages."""
+"""LangSmith prompt loader with in-memory cache and bundled fallbacks for outages.
+
+Prompts are stored as private workspace prompts (no owner prefix).
+Push with scripts/seed_prompts.py; pull uses the name directly.
+"""
 
 import logging
 from functools import lru_cache
@@ -6,6 +10,13 @@ from functools import lru_cache
 from langsmith import Client
 
 logger = logging.getLogger(__name__)
+
+
+def _client() -> Client:
+    from app.core.config import get_settings
+    s = get_settings()
+    # LangSmith SDK accepts the base URL; it appends /api/v1 paths internally.
+    return Client(api_key=s.langsmith_api_key, api_url=s.langsmith_endpoint)
 
 # ---------------------------------------------------------------------------
 # Fallback prompts — used when LangSmith Hub is unreachable.
@@ -73,6 +84,27 @@ Use the available tools to read file contents and diffs. For each issue found:
 
 Maximum 6 tool-call iterations. Emit findings with whatever evidence you have collected.
 
+## Examples
+
+### Real finding — SQL injection
+Code: `query = "SELECT * FROM users WHERE id = " + user_id`
+Reasoning: `user_id` comes from a request parameter (confirmed via get_diff). No
+parameterisation present. An attacker can inject `; DROP TABLE users --`.
+Output:
+```json
+[{{"specialist":"security","severity":"critical","file_path":"api/users.py",
+"line_start":12,"line_end":12,"title":"SQL injection via string concatenation",
+"explanation":"user_id is concatenated directly into the query without parameterisation.",
+"suggested_fix":"Use cursor.execute(query, (user_id,)) with a placeholder instead.",
+"confidence":"high"}}]
+```
+
+### False positive to avoid — SHA-256 for checksums
+Code: `hashlib.sha256(file_bytes).hexdigest()`
+Reasoning: This is a file-integrity checksum, not a password hash. SHA-256 is
+appropriate for checksums. Flagging it as "weak cryptography" would be wrong.
+Output: `[]`
+
 ## Output format
 
 After your tool calls, output a JSON array of findings (empty array if none):
@@ -118,6 +150,27 @@ Locale: {locale}
 Use the available tools to read file contents, diffs, and adjacent code for context.
 Maximum 6 tool-call iterations.
 
+## Examples
+
+### Real finding — null dereference
+Code: `user = get_user(id); return user.name`
+Adjacent code shows `get_user` returns `Optional[User]`.
+Reasoning: `user` can be `None` when the ID is not found. `user.name` will
+raise `AttributeError` at runtime for unknown IDs.
+Output:
+```json
+[{{"specialist":"correctness","severity":"high","file_path":"services/users.py",
+"line_start":8,"line_end":8,"title":"Null dereference: get_user may return None",
+"explanation":"get_user is typed as Optional[User]. Accessing .name without a None check raises AttributeError.",
+"suggested_fix":"if user is None: return None\\nreturn user.name",
+"confidence":"high"}}]
+```
+
+### False positive to avoid — broad except that logs and re-raises
+Code: `except Exception as exc: logger.error(exc); raise`
+Reasoning: This re-raises after logging. The exception is NOT swallowed.
+Output: `[]`
+
 ## Output format
 
 After your tool calls, output a JSON array of findings (empty array if none):
@@ -162,6 +215,27 @@ Locale: {locale}
 
 Use the available tools to read file contents and diffs. Look for call sites and callers
 when the impact depends on usage frequency. Maximum 6 tool-call iterations.
+
+## Examples
+
+### Real finding — HTTP request inside a loop
+Code: `for item in items: resp = requests.get(base_url + item)`
+Reasoning: One synchronous HTTP round-trip per item. For 500 items this serialises
+500 network calls. Should use `asyncio.gather` or batch API if available.
+Output:
+```json
+[{{"specialist":"performance","severity":"high","file_path":"tasks/fetcher.py",
+"line_start":14,"line_end":14,"title":"Serial HTTP requests inside loop (N round-trips)",
+"explanation":"One blocking requests.get() per item. Use concurrent.futures or asyncio.gather to parallelise.",
+"suggested_fix":"Use asyncio.gather(*[fetch(item) for item in items]) with an async HTTP client.",
+"confidence":"high"}}]
+```
+
+### False positive to avoid — sort before loop
+Code: `records = sorted(raw_records); for r in records: process(r)`
+Reasoning: `sorted()` is called once before the loop, not inside it. O(n log n)
+one-time cost. This is correct and not a performance issue.
+Output: `[]`
 
 ## Output format
 
@@ -210,6 +284,26 @@ Locale: {locale}
 
 Use the available tools to read file contents and compare against adjacent code for conventions.
 Maximum 6 tool-call iterations.
+
+## Examples
+
+### Real finding — unused import
+Code: `import os\nimport hashlib\n\ndef slugify(text): return text.lower()`
+Reasoning: Neither `os` nor `hashlib` is referenced anywhere in the file.
+Output:
+```json
+[{{"specialist":"style","severity":"low","file_path":"utils/text.py",
+"line_start":1,"line_end":2,"title":"Unused imports: os, hashlib",
+"explanation":"Both modules are imported but never referenced in this file.",
+"suggested_fix":"Remove the unused import lines.",
+"confidence":"high"}}]
+```
+
+### False positive to avoid — single-letter loop variable
+Code: `for i, item in enumerate(items): result[i] = transform(item)`
+Reasoning: `i` is a conventional index variable in enumerate loops. Flagging it
+as a "bad name" would generate noise and is not a style violation.
+Output: `[]`
 
 ## Output format
 
@@ -272,28 +366,23 @@ Technical terms stay in English even when locale is fr.\
 """,
 }
 
-_PROMPT_HUB_PREFIX = "ai-reviewer"
-
-
-@lru_cache(maxsize=32)
-def get_prompt(name: str, tag: str = "production") -> str:
+@lru_cache(maxsize=None)
+def get_prompt(name: str) -> str:
     """Return the prompt template for the given specialist or orchestrator node.
 
-    Pulls from LangSmith Hub (ai-reviewer/<name>:<tag>) on first call and caches
-    for the process lifetime. Falls back to FALLBACK_PROMPTS on any error so a
-    LangSmith outage does not bring down the worker.
+    Pulls the latest version of codeshield-<name> from LangSmith on first call
+    and caches for the process lifetime.  Falls back to FALLBACK_PROMPTS on any
+    error so a LangSmith outage never kills the worker.
     """
+    prompt_id = f"codeshield-{name}"
     try:
-        client = Client()
-        prompt = client.pull_prompt(f"{_PROMPT_HUB_PREFIX}/{name}:{tag}")
-        messages = prompt.messages
-        system_message = messages[0]
-        template: str = system_message.prompt.template
-        logger.info("Loaded prompt from LangSmith Hub", extra={"prompt_name": name, "tag": tag})
+        prompt = _client().pull_prompt(prompt_id)
+        template: str = prompt.messages[0].prompt.template
+        logger.info("Loaded prompt from LangSmith", extra={"prompt_id": prompt_id})
         return template
     except Exception as exc:
         logger.warning(
             "LangSmith prompt pull failed, using fallback",
-            extra={"prompt_name": name, "tag": tag, "error": str(exc)},
+            extra={"prompt_id": prompt_id, "error": str(exc)},
         )
         return FALLBACK_PROMPTS[name]
