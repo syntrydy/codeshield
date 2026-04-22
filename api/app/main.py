@@ -60,6 +60,8 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
     app.include_router(health_router)
+    # projects/stats must be registered before projects/{project_id} to prevent
+    # the static 'stats' segment being consumed by the dynamic UUID parameter.
     app.include_router(projects_router)
     app.include_router(runs_router)
     app.include_router(integrations_router)

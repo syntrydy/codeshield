@@ -64,9 +64,13 @@ def list_projects(user_id: str = Depends(current_user_id)) -> list[dict]:  # typ
     return resp.data  # type: ignore[return-value]
 
 
-@router.get("/stats", response_model=UserStats)
+@router.get("/stats", response_model=UserStats, summary="User stats (must be declared before /{project_id})")
 def get_user_stats(user_id: str = Depends(current_user_id)) -> dict:  # type: ignore[type-arg]
-    """Return aggregate finding counts across all runs owned by the authenticated user."""
+    """Return aggregate finding counts across all runs owned by the authenticated user.
+
+    NOTE: This route must remain before /{project_id} in the router so the static
+    path 'stats' is never captured by the dynamic UUID parameter.
+    """
     client = get_service_client()
     runs_resp = client.table("runs").select("id").eq("user_id", user_id).execute()
     run_ids = [r["id"] for r in (runs_resp.data or [])]
