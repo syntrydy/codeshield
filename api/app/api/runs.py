@@ -63,9 +63,10 @@ class RunDetail(RunSummary):
 def list_runs(
     project_id: UUID,
     limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     user_id: str = Depends(current_user_id),
 ) -> list[dict]:  # type: ignore[type-arg]
-    """Return recent runs for a project, newest first."""
+    """Return recent runs for a project, newest first, with cursor-style offset pagination."""
     client = get_service_client()
 
     # Verify project belongs to user (RLS also enforces this, but gives a clearer 404)
@@ -85,7 +86,7 @@ def list_runs(
         .select("*")
         .eq("project_id", str(project_id))
         .order("created_at", desc=True)
-        .limit(limit)
+        .range(offset, offset + limit - 1)
         .execute()
     )
     return resp.data  # type: ignore[return-value]

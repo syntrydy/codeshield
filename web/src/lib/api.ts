@@ -84,7 +84,20 @@ export type RunEvent = {
 
 export type RunDetail = Run & { findings: Finding[]; events: RunEvent[] };
 
-export const fetchRuns = (projectId: string): Promise<Run[]> =>
-  apiFetch(`/projects/${projectId}/runs`);
+const PAGE_SIZE = 20;
+
+export const fetchRuns = (
+  projectId: string,
+  { offset = 0, limit = PAGE_SIZE }: { offset?: number; limit?: number } = {},
+): Promise<Run[]> =>
+  apiFetch(`/projects/${projectId}/runs?limit=${limit}&offset=${offset}`);
+
+export { PAGE_SIZE };
 
 export const fetchRun = (runId: string): Promise<RunDetail> => apiFetch(`/runs/${runId}`);
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+
+export type UserStats = { total_findings: number; critical_findings: number };
+
+export const fetchStats = (): Promise<UserStats> => apiFetch("/projects/stats");

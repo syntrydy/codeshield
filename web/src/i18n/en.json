@@ -163,7 +163,8 @@
     "emptyTitle": "No runs yet",
     "emptySubtext": "Open a pull request on a connected repository to trigger your first review.",
     "noMatch": "No runs match the selected filters.",
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "loadMore": "Load more"
   },
   "projects": {
     "breadcrumb": "Overview / Projects",

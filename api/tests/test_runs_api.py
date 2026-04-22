@@ -60,7 +60,7 @@ def anyio_backend() -> str:
 
 def _make_chain(data: object) -> MagicMock:
     chain = MagicMock()
-    for method in ("select", "eq", "order", "limit", "maybe_single"):
+    for method in ("select", "eq", "order", "limit", "range", "maybe_single"):
         getattr(chain, method).return_value = chain
     chain.execute.return_value = MagicMock(data=data)
     return chain

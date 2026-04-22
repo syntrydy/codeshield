@@ -163,7 +163,8 @@
     "emptyTitle": "Aucun run pour l'instant",
     "emptySubtext": "Ouvrez une pull request sur un dépôt connecté pour déclencher votre première revue.",
     "noMatch": "Aucun run ne correspond aux filtres sélectionnés.",
-    "clearFilters": "Effacer les filtres"
+    "clearFilters": "Effacer les filtres",
+    "loadMore": "Charger plus"
   },
   "projects": {
     "breadcrumb": "Vue d'ensemble / Projets",

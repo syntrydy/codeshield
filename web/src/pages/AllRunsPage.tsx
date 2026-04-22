@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useQuery, useQueries } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { useQuery, useQueries, useInfiniteQuery } from "@tanstack/react-query";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { fetchProjects, fetchRuns, type Project, type Run } from "../lib/api";
+import { fetchProjects, fetchRuns, PAGE_SIZE, type Project, type Run } from "../lib/api";
 import { AppLayout } from "../components/AppLayout";
 
 type RunWithProject = Run & { project: Project };
@@ -35,31 +35,128 @@ function relativeTime(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+function RunsTable({ runs }: { runs: RunWithProject[] }) {
+  const { t } = useTranslation();
+  return (
+    <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
+      <table className="w-full text-sm border-collapse">
+        <thead>
+          <tr className="bg-zinc-50 border-b border-zinc-200">
+            <th className="px-5 py-3 text-left text-[11px] font-medium text-zinc-500 uppercase tracking-wider">{t("allRuns.colProject")}</th>
+            <th className="px-5 py-3 text-left text-[11px] font-medium text-zinc-500 uppercase tracking-wider">{t("allRuns.colPR")}</th>
+            <th className="px-5 py-3 text-left text-[11px] font-medium text-zinc-500 uppercase tracking-wider">{t("allRuns.colStatus")}</th>
+            <th className="px-5 py-3 text-left text-[11px] font-medium text-zinc-500 uppercase tracking-wider hidden md:table-cell">{t("allRuns.colCommit")}</th>
+            <th className="px-5 py-3 text-left text-[11px] font-medium text-zinc-500 uppercase tracking-wider hidden lg:table-cell">{t("allRuns.colDuration")}</th>
+            <th className="px-5 py-3 text-right text-[11px] font-medium text-zinc-500 uppercase tracking-wider hidden lg:table-cell">{t("allRuns.colCost")}</th>
+            <th className="px-5 py-3 text-right text-[11px] font-medium text-zinc-500 uppercase tracking-wider">{t("allRuns.colTriggered")}</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-100">
+          {runs.map((run) => {
+            const badge = STATUS_BADGE[run.status] ?? STATUS_BADGE.queued;
+            const [, repo] = run.project.github_repo_full_name.split("/");
+            return (
+              <tr key={run.id} className="hover:bg-zinc-50 transition-colors group">
+                <td className="px-5 py-3.5">
+                  <Link to={`/runs?project=${run.project_id}`} className="flex items-center gap-2 group/repo">
+                    <div className="w-6 h-6 bg-zinc-950 rounded flex items-center justify-center flex-shrink-0">
+                      <span className="material-symbols-outlined text-white text-[11px]">code_blocks</span>
+                    </div>
+                    <span className="text-xs font-semibold text-zinc-800 group-hover/repo:text-zinc-950 truncate max-w-[120px]">{repo}</span>
+                  </Link>
+                </td>
+                <td className="px-5 py-3.5">
+                  <Link to={`/runs/${run.id}`} className="flex items-center gap-1.5 hover:underline">
+                    <span className="material-symbols-outlined text-zinc-400 text-[13px]">merge_type</span>
+                    <span className="font-mono text-xs font-semibold text-zinc-950">#{run.pr_number}</span>
+                  </Link>
+                </td>
+                <td className="px-5 py-3.5">
+                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium border ${badge.cls}`}>
+                    {badge.dot && <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />}
+                    {badge.label}
+                  </span>
+                </td>
+                <td className="px-5 py-3.5 hidden md:table-cell">
+                  <span className="font-mono text-[11px] text-zinc-400 bg-zinc-50 border border-zinc-100 rounded px-1.5 py-0.5">
+                    {run.pr_head_sha.slice(0, 7)}
+                  </span>
+                </td>
+                <td className="px-5 py-3.5 hidden lg:table-cell">
+                  <span className="font-mono text-xs text-zinc-500">{duration(run)}</span>
+                </td>
+                <td className="px-5 py-3.5 text-right hidden lg:table-cell">
+                  <span className="font-mono text-xs text-zinc-500">${run.total_cost_usd.toFixed(4)}</span>
+                </td>
+                <td className="px-5 py-3.5 text-right">
+                  <div className="flex items-center justify-end gap-3">
+                    <span className="text-xs text-zinc-400">{relativeTime(run.created_at)}</span>
+                    <Link
+                      to={`/runs/${run.id}`}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1 text-xs font-medium text-zinc-950 hover:underline"
+                    >
+                      View <span className="material-symbols-outlined text-[12px]">arrow_forward</span>
+                    </Link>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function AllRunsPage() {
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [projectFilter, setProjectFilter] = useState<string>("all");
+
+  const projectFilter = searchParams.get("project") ?? "all";
+  const setProjectFilter = (value: string) => {
+    setSearchParams(value === "all" ? {} : { project: value }, { replace: true });
+  };
 
   const { data: projects } = useQuery({ queryKey: ["projects"], queryFn: fetchProjects });
   const projectList = projects ?? [];
 
-  const runsQueries = useQueries({
+  // ── Single-project view: infinite scroll ─────────────────────────────────────
+  const selectedProject = projectList.find((p) => p.id === projectFilter) ?? null;
+
+  const infiniteQuery = useInfiniteQuery({
+    queryKey: ["runs-infinite", projectFilter],
+    queryFn: ({ pageParam = 0 }) => fetchRuns(projectFilter, { offset: pageParam as number }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === PAGE_SIZE ? allPages.flat().length : undefined,
+    enabled: projectFilter !== "all" && !!projects,
+  });
+
+  // ── All-projects view: capped at PAGE_SIZE per project ───────────────────────
+  const allProjectsQueries = useQueries({
     queries: projectList.map((p) => ({
       queryKey: ["runs", p.id] as const,
-      queryFn: () => fetchRuns(p.id),
-      enabled: !!projects,
+      queryFn: () => fetchRuns(p.id, { limit: PAGE_SIZE }),
+      enabled: projectFilter === "all" && !!projects,
     })),
   });
 
-  const isLoading = !projects || runsQueries.some((q) => q.isLoading);
+  const isLoading =
+    !projects ||
+    (projectFilter === "all"
+      ? allProjectsQueries.some((q) => q.isLoading)
+      : infiniteQuery.isLoading);
 
-  const allRuns: RunWithProject[] = runsQueries
-    .flatMap((q, i) => (q.data ?? []).map((r) => ({ ...r, project: projectList[i] })))
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const allRuns: RunWithProject[] =
+    projectFilter !== "all" && selectedProject
+      ? (infiniteQuery.data?.pages.flat() ?? []).map((r) => ({ ...r, project: selectedProject }))
+      : allProjectsQueries
+          .flatMap((q, i) => (q.data ?? []).map((r) => ({ ...r, project: projectList[i] })))
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const filtered = allRuns.filter((r) => {
     if (statusFilter !== "all" && r.status !== statusFilter) return false;
-    if (projectFilter !== "all" && r.project_id !== projectFilter) return false;
     return true;
   });
 
@@ -68,13 +165,11 @@ export function AllRunsPage() {
     return acc;
   }, {});
 
+  const canLoadMore = projectFilter !== "all" && infiniteQuery.hasNextPage;
+
   return (
-    <AppLayout
-      activePage="runs"
-      breadcrumb={t("allRuns.breadcrumb")}
-      hasProjects={projectList.length > 0}
-    >
-      <main className="p-8 max-w-[1280px] w-full mx-auto space-y-6">
+    <AppLayout activePage="runs" breadcrumb={t("allRuns.breadcrumb")} hasProjects={projectList.length > 0}>
+      <main className="p-8 w-full space-y-6">
 
         {/* Page header */}
         <div className="flex items-start justify-between gap-4">
@@ -82,7 +177,6 @@ export function AllRunsPage() {
             <h1 className="text-2xl font-black tracking-tighter text-zinc-950">{t("allRuns.title")}</h1>
             <p className="text-sm text-zinc-500 mt-0.5">{t("allRuns.subtitle")}</p>
           </div>
-          {/* Summary chips */}
           <div className="flex items-center gap-2 flex-shrink-0">
             {(["running", "queued"] as const).map((s) => counts[s] > 0 && (
               <span key={s} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold border ${STATUS_BADGE[s].cls}`}>
@@ -95,27 +189,21 @@ export function AllRunsPage() {
 
         {/* Filters */}
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Status pills */}
           <div className="flex items-center bg-zinc-100 rounded-lg p-0.5 gap-0.5">
             {STATUS_FILTERS.map((s) => (
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  statusFilter === s
-                    ? "bg-white text-zinc-950 shadow-sm"
-                    : "text-zinc-500 hover:text-zinc-700"
+                  statusFilter === s ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-zinc-700"
                 }`}
               >
                 {s === "all" ? t("allRuns.filterAll") : t(`status.${s}`)}
-                {s !== "all" && counts[s] > 0 && (
-                  <span className="ml-1.5 text-zinc-400">{counts[s]}</span>
-                )}
+                {s !== "all" && counts[s] > 0 && <span className="ml-1.5 text-zinc-400">{counts[s]}</span>}
               </button>
             ))}
           </div>
 
-          {/* Project dropdown */}
           {projectList.length > 1 && (
             <select
               value={projectFilter}
@@ -145,79 +233,18 @@ export function AllRunsPage() {
         )}
 
         {/* Table */}
-        {!isLoading && filtered.length > 0 && (
-          <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-zinc-50 border-b border-zinc-200">
-                  <th className="px-5 py-3 text-left text-[11px] font-medium text-zinc-500 uppercase tracking-wider">{t("allRuns.colProject")}</th>
-                  <th className="px-5 py-3 text-left text-[11px] font-medium text-zinc-500 uppercase tracking-wider">{t("allRuns.colPR")}</th>
-                  <th className="px-5 py-3 text-left text-[11px] font-medium text-zinc-500 uppercase tracking-wider">{t("allRuns.colStatus")}</th>
-                  <th className="px-5 py-3 text-left text-[11px] font-medium text-zinc-500 uppercase tracking-wider hidden md:table-cell">{t("allRuns.colCommit")}</th>
-                  <th className="px-5 py-3 text-left text-[11px] font-medium text-zinc-500 uppercase tracking-wider hidden lg:table-cell">{t("allRuns.colDuration")}</th>
-                  <th className="px-5 py-3 text-right text-[11px] font-medium text-zinc-500 uppercase tracking-wider hidden lg:table-cell">{t("allRuns.colCost")}</th>
-                  <th className="px-5 py-3 text-right text-[11px] font-medium text-zinc-500 uppercase tracking-wider">{t("allRuns.colTriggered")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100">
-                {filtered.map((run) => {
-                  const badge = STATUS_BADGE[run.status] ?? STATUS_BADGE.queued;
-                  const [, repo] = run.project.github_repo_full_name.split("/");
-                  return (
-                    <tr key={run.id} className="hover:bg-zinc-50 transition-colors group">
-                      <td className="px-5 py-3.5">
-                        <Link
-                          to={`/projects/${run.project_id}/runs`}
-                          className="flex items-center gap-2 group/repo"
-                        >
-                          <div className="w-6 h-6 bg-zinc-950 rounded flex items-center justify-center flex-shrink-0">
-                            <span className="material-symbols-outlined text-white text-[11px]">code_blocks</span>
-                          </div>
-                          <span className="text-xs font-semibold text-zinc-800 group-hover/repo:text-zinc-950 truncate max-w-[120px]">
-                            {repo}
-                          </span>
-                        </Link>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <Link to={`/runs/${run.id}`} className="flex items-center gap-1.5 hover:underline">
-                          <span className="material-symbols-outlined text-zinc-400 text-[13px]">merge_type</span>
-                          <span className="font-mono text-xs font-semibold text-zinc-950">#{run.pr_number}</span>
-                        </Link>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-medium border ${badge.cls}`}>
-                          {badge.dot && <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />}
-                          {badge.label}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 hidden md:table-cell">
-                        <span className="font-mono text-[11px] text-zinc-400 bg-zinc-50 border border-zinc-100 rounded px-1.5 py-0.5">
-                          {run.pr_head_sha.slice(0, 7)}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 hidden lg:table-cell">
-                        <span className="font-mono text-xs text-zinc-500">{duration(run)}</span>
-                      </td>
-                      <td className="px-5 py-3.5 text-right hidden lg:table-cell">
-                        <span className="font-mono text-xs text-zinc-500">${run.total_cost_usd.toFixed(4)}</span>
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-3">
-                          <span className="text-xs text-zinc-400">{relativeTime(run.created_at)}</span>
-                          <Link
-                            to={`/runs/${run.id}`}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1 text-xs font-medium text-zinc-950 hover:underline"
-                          >
-                            {t("allRuns.view")}
-                            <span className="material-symbols-outlined text-[12px]">arrow_forward</span>
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        {!isLoading && filtered.length > 0 && <RunsTable runs={filtered} />}
+
+        {/* Load more (single-project view only) */}
+        {canLoadMore && (
+          <div className="flex justify-center">
+            <button
+              onClick={() => void infiniteQuery.fetchNextPage()}
+              disabled={infiniteQuery.isFetchingNextPage}
+              className="px-6 py-2 text-xs font-medium text-zinc-700 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors disabled:opacity-40"
+            >
+              {infiniteQuery.isFetchingNextPage ? t("common.loading") : t("allRuns.loadMore")}
+            </button>
           </div>
         )}
 
