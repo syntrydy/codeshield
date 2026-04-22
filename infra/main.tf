@@ -22,14 +22,6 @@ provider "aws" {
   region = var.aws_region
 }
 
-# ── Networking ─────────────────────────────────────────────────────────────────
-module "vpc" {
-  source = "./modules/vpc"
-
-  name               = local.name_prefix
-  availability_zones = var.availability_zones
-}
-
 # ── Container registry ─────────────────────────────────────────────────────────
 module "ecr" {
   source = "./modules/ecr"
@@ -37,56 +29,61 @@ module "ecr" {
   name_prefix = local.name_prefix
 }
 
-# ── Redis (Celery broker + token cache) ────────────────────────────────────────
-module "redis" {
-  source = "./modules/redis"
-
-  name_prefix        = local.name_prefix
-  subnet_ids         = module.vpc.private_subnet_ids
-  security_group_ids = [module.vpc.redis_sg_id]
-}
-
-# ── Application Load Balancer ──────────────────────────────────────────────────
-module "alb" {
-  source = "./modules/alb"
-
-  name_prefix       = local.name_prefix
-  vpc_id            = module.vpc.vpc_id
-  public_subnet_ids = module.vpc.public_subnet_ids
-  certificate_arn   = var.acm_certificate_arn
-}
-
-# ── ECS cluster + services ─────────────────────────────────────────────────────
-module "ecs" {
-  source = "./modules/ecs"
-
-  name_prefix          = local.name_prefix
-  aws_region           = var.aws_region
-  vpc_id               = module.vpc.vpc_id
-  private_subnet_ids   = module.vpc.private_subnet_ids
-  alb_target_group_arn = module.alb.api_target_group_arn
-  api_sg_id            = module.vpc.api_sg_id
-
-  api_image    = "${module.ecr.api_repo_url}:${var.image_tag}"
-  worker_image = "${module.ecr.api_repo_url}:${var.image_tag}"
-
-  redis_url            = module.redis.redis_url
-  secrets_manager_arns = module.secrets.secret_arns
-}
-
-# ── Secrets Manager ────────────────────────────────────────────────────────────
+# ── Secrets Manager (populated by scripts/populate-secrets.sh after first apply)
 module "secrets" {
   source = "./modules/secrets"
 
   name_prefix = local.name_prefix
 }
 
+# ── Redis Serverless (installation token cache) ────────────────────────────────
+module "redis" {
+  source = "./modules/redis_serverless"
+
+  name_prefix = local.name_prefix
+}
+
+# ── SQS review queue ───────────────────────────────────────────────────────────
+module "sqs" {
+  source = "./modules/sqs"
+
+  name_prefix = local.name_prefix
+}
+
+# ── Lambda worker (container image, triggered by SQS) ─────────────────────────
+module "lambda" {
+  source = "./modules/lambda"
+
+  name_prefix       = local.name_prefix
+  image_uri         = "${module.ecr.api_repo_url}:${var.image_tag}"
+  sqs_queue_arn     = module.sqs.queue_arn
+  sqs_queue_url     = module.sqs.queue_url
+  secrets_prefix    = local.name_prefix
+  supabase_url      = var.supabase_url
+  supabase_anon_key = var.supabase_anon_key
+  aws_region        = var.aws_region
+}
+
+# ── App Runner API service ─────────────────────────────────────────────────────
+module "apprunner" {
+  source = "./modules/apprunner"
+
+  name_prefix       = local.name_prefix
+  image_uri         = "${module.ecr.api_repo_url}:${var.image_tag}"
+  aws_region        = var.aws_region
+  secrets_prefix    = local.name_prefix
+  sqs_queue_url     = module.sqs.queue_url
+  supabase_url      = var.supabase_url
+  supabase_anon_key = var.supabase_anon_key
+  redis_url         = module.redis.redis_url
+}
+
 # ── S3 buckets ─────────────────────────────────────────────────────────────────
 module "s3" {
   source = "./modules/s3"
 
-  name_prefix  = local.name_prefix
-  environment  = var.environment
+  name_prefix = local.name_prefix
+  environment = var.environment
 }
 
 # ── CloudFront + S3 frontend ───────────────────────────────────────────────────

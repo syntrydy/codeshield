@@ -1,31 +1,26 @@
-output "alb_dns_name" {
-  description = "DNS name of the Application Load Balancer"
-  value       = module.alb.dns_name
+output "api_url" {
+  description = "App Runner service URL for the API (set as VITE_API_BASE_URL in frontend build)"
+  value       = "https://${module.apprunner.service_url}"
 }
 
 output "api_ecr_repo_url" {
-  description = "ECR repository URL for the API/worker image"
+  description = "ECR repository URL for the API/Lambda image"
   value       = module.ecr.api_repo_url
 }
 
-output "web_ecr_repo_url" {
-  description = "ECR repository URL for the web image"
-  value       = module.ecr.web_repo_url
+output "sqs_queue_url" {
+  description = "SQS review queue URL"
+  value       = module.sqs.queue_url
 }
 
-output "ecs_cluster_name" {
-  description = "ECS cluster name (used by build-deploy CI to trigger rolling deploys)"
-  value       = module.ecs.cluster_name
+output "lambda_function_name" {
+  description = "Lambda worker function name (used by CI to update function code)"
+  value       = module.lambda.function_name
 }
 
-output "ecs_service_api" {
-  description = "ECS API service name"
-  value       = module.ecs.service_api_name
-}
-
-output "ecs_service_worker" {
-  description = "ECS worker service name"
-  value       = module.ecs.service_worker_name
+output "apprunner_service_id" {
+  description = "App Runner service ID (used by CI to trigger deployments)"
+  value       = module.apprunner.service_id
 }
 
 output "artifacts_bucket" {

@@ -5,7 +5,7 @@ variable "aws_region" {
 }
 
 variable "environment" {
-  description = "Deployment environment (prod)"
+  description = "Deployment environment"
   type        = string
   default     = "prod"
   validation {
@@ -14,22 +14,25 @@ variable "environment" {
   }
 }
 
-variable "availability_zones" {
-  description = "AZs to deploy into (at least 2)"
-  type        = list(string)
-  default     = ["us-east-1a", "us-east-1b"]
-}
-
-variable "acm_certificate_arn" {
-  description = "ACM certificate ARN for the ALB HTTPS listener"
-  type        = string
-}
-
 variable "image_tag" {
   description = "Docker image tag to deploy (set to the commit SHA by CI)"
   type        = string
   default     = "latest"
 }
+
+# ── Supabase (non-secret values safe to store in Terraform vars) ───────────────
+
+variable "supabase_url" {
+  description = "Supabase project URL (e.g. https://xyzcompany.supabase.co)"
+  type        = string
+}
+
+variable "supabase_anon_key" {
+  description = "Supabase publishable (anon) key — safe to expose to the browser"
+  type        = string
+}
+
+# ── CloudFront frontend ────────────────────────────────────────────────────────
 
 variable "cloudfront_certificate_arn" {
   description = "ACM certificate ARN for the CloudFront frontend (must be in us-east-1). Null = use the default cloudfront.net domain."

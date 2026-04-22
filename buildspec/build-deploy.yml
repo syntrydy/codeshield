@@ -1,15 +1,16 @@
 # buildspec/build-deploy.yml
 # Trigger: push to main (CodeBuild project: build-deploy)
-# Builds the API Docker image, pushes to ECR, triggers ECS rolling deploy.
+# Builds the API Docker image, pushes to ECR, deploys to App Runner + Lambda.
 # Builds the React frontend, syncs to S3, invalidates CloudFront cache.
 #
 # Required CodeBuild environment variables (set in the project, not here):
 #   AWS_ACCOUNT_ID, AWS_REGION
-#   ECR_REPO_API                   — ECR repo name for the API/worker image
-#   ECS_CLUSTER, ECS_SERVICE_API, ECS_SERVICE_WORKER
+#   ECR_REPO_API                   — ECR repo name for the API/Lambda image
+#   APPRUNNER_SERVICE_ARN          — App Runner service ARN (from terraform output apprunner_service_id is the ID; ARN is arn:aws:apprunner:...)
+#   LAMBDA_FUNCTION_NAME           — Lambda function name (from terraform output lambda_function_name)
 #   FRONTEND_BUCKET                — S3 bucket name (from terraform output frontend_bucket)
 #   CF_DIST_ID                     — CloudFront distribution ID (from terraform output cloudfront_distribution_id)
-#   API_HEALTH_URL                 — base URL of the deployed API for smoke test
+#   API_HEALTH_URL                 — base URL of the deployed App Runner service for smoke test
 #   VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY
 #   VITE_API_BASE_URL, VITE_GITHUB_APP_SLUG
 version: 0.2
@@ -27,7 +28,7 @@ phases:
 
   build:
     commands:
-      # ── API Docker image (shared by api + worker ECS services) ───────────────
+      # ── API/Lambda Docker image ───────────────────────────────────────────────
       - echo "Building API image..."
       - docker build -t $API_REPO:$IMAGE_TAG -t $API_REPO:latest ./api
 
@@ -49,14 +50,28 @@ phases:
       - docker push $API_REPO:$IMAGE_TAG
       - docker push $API_REPO:latest
 
+      # ── Update Lambda to the new image ────────────────────────────────────────
+      - echo "Updating Lambda worker image..."
+      - aws lambda update-function-code
+          --function-name $LAMBDA_FUNCTION_NAME
+          --image-uri $API_REPO:$IMAGE_TAG
+          --region $AWS_REGION
+      - aws lambda wait function-updated
+          --function-name $LAMBDA_FUNCTION_NAME
+          --region $AWS_REGION
+
+      # ── Trigger App Runner deployment ─────────────────────────────────────────
+      - echo "Triggering App Runner deployment..."
+      - aws apprunner start-deployment
+          --service-arn $APPRUNNER_SERVICE_ARN
+          --region $AWS_REGION
+
       # ── Deploy frontend to S3 + CloudFront ────────────────────────────────────
       - echo "Syncing frontend assets to S3..."
-      # Hashed assets (JS/CSS bundles): long-lived immutable cache
       - aws s3 sync web/dist/assets/ s3://$FRONTEND_BUCKET/assets/
           --delete
           --cache-control "public,max-age=31536000,immutable"
           --region $AWS_REGION
-      # index.html and other HTML: never cache so users always get the latest shell
       - aws s3 sync web/dist/ s3://$FRONTEND_BUCKET/
           --delete
           --exclude "assets/*"
@@ -67,16 +82,11 @@ phases:
           --distribution-id $CF_DIST_ID
           --paths "/*"
 
-      # ── ECS rolling deploys ───────────────────────────────────────────────────
-      - echo "Triggering ECS rolling deploys..."
-      - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE_API    --force-new-deployment --region $AWS_REGION
-      - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE_WORKER --force-new-deployment --region $AWS_REGION
-
-      - echo "Waiting for API service stability (up to 10 min)..."
-      - aws ecs wait services-stable --cluster $ECS_CLUSTER --services $ECS_SERVICE_API --region $AWS_REGION
-
+      # ── Smoke test (App Runner needs ~30s to route traffic) ───────────────────
+      - echo "Waiting 30s for App Runner to route traffic..."
+      - sleep 30
       - echo "Smoke test — health endpoint..."
-      - curl --fail --retry 5 --retry-delay 5 $API_HEALTH_URL/health
+      - curl --fail --retry 6 --retry-delay 10 $API_HEALTH_URL/health
 
       - echo "Deploy complete."
 
