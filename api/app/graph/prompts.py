@@ -5,7 +5,8 @@ Push with scripts/seed_prompts.py; pull uses the name directly.
 """
 
 import logging
-from functools import lru_cache
+import time
+from typing import NamedTuple
 
 from langsmith import Client
 
@@ -366,23 +367,39 @@ Technical terms stay in English even when locale is fr.\
 """,
 }
 
-@lru_cache(maxsize=None)
+_TTL_SECONDS = 3600  # re-fetch from LangSmith Hub at most once per hour
+
+
+class _CacheEntry(NamedTuple):
+    template: str
+    fetched_at: float
+
+
+_prompt_cache: dict[str, _CacheEntry] = {}
+
+
 def get_prompt(name: str) -> str:
     """Return the prompt template for the given specialist or orchestrator node.
 
-    Pulls the latest version of codeshield-<name> from LangSmith on first call
-    and caches for the process lifetime.  Falls back to FALLBACK_PROMPTS on any
-    error so a LangSmith outage never kills the worker.
+    Pulls from LangSmith Hub on first call and re-fetches after _TTL_SECONDS.
+    Falls back to the in-memory value (or FALLBACK_PROMPTS) if Hub is unreachable,
+    so a LangSmith outage never kills the worker mid-deployment.
     """
+    entry = _prompt_cache.get(name)
+    if entry is not None and (time.monotonic() - entry.fetched_at) < _TTL_SECONDS:
+        return entry.template
+
     prompt_id = f"codeshield-{name}"
     try:
         prompt = _client().pull_prompt(prompt_id)
         template: str = prompt.messages[0].prompt.template
         logger.info("Loaded prompt from LangSmith", extra={"prompt_id": prompt_id})
+        _prompt_cache[name] = _CacheEntry(template=template, fetched_at=time.monotonic())
         return template
     except Exception as exc:
         logger.warning(
-            "LangSmith prompt pull failed, using fallback",
+            "LangSmith prompt pull failed, using cached/fallback",
             extra={"prompt_id": prompt_id, "error": str(exc)},
         )
-        return FALLBACK_PROMPTS[name]
+        # Prefer the stale cached value over the bundled fallback — it's closer to prod.
+        return entry.template if entry is not None else FALLBACK_PROMPTS[name]
