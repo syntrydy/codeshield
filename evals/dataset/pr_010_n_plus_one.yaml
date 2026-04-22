@@ -1,0 +1,42 @@
+id: pr_010_n_plus_one
+description: >
+  PR that retrieves all users and then executes one DB query per user to count
+  their posts, producing N+1 queries. Ground truth for the Performance specialist.
+
+pr_url: https://github.com/codeshield-eval/fixtures/pull/10
+pr_head_sha: "fixture-sha-010"
+pr_base_sha: "fixture-sha-000"
+locale: en
+enabled_specialists: [security, correctness, performance, style]
+
+changed_files:
+  - path: api/reports.py
+    content: |
+      from models import db, User, Post
+
+      def get_users_with_post_count() -> list[dict]:
+          users = db.session.query(User).all()
+          result = []
+          for user in users:
+              count = db.session.query(Post).filter_by(user_id=user.id).count()
+              result.append({"id": user.id, "post_count": count})
+          return result
+
+expected_findings:
+  - specialist: performance
+    file: api/reports.py
+    line_range: [6, 7]
+    description: >
+      N+1 query: one `SELECT COUNT(*)` is issued per user inside the loop.
+      For 1000 users this is 1001 queries. Replace with a single GROUP BY query
+      or use SQLAlchemy's `func.count` with `outerjoin` so all counts are
+      fetched in one round-trip.
+    severity: high
+
+negative_findings:
+  - description: >
+      Flagging db.session.query(User).all() as loading all rows at once is a valid
+      observation but low severity in this context — the N+1 inside the loop is
+      the primary issue.
+
+expected_verdict: request_changes

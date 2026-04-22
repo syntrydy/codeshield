@@ -1,0 +1,45 @@
+id: pr_005_path_traversal
+description: >
+  PR that serves files by joining a user-controlled filename directly onto a
+  base directory with no sanitization. Ground truth for the Security specialist
+  on path traversal (directory traversal / LFI).
+
+pr_url: https://github.com/codeshield-eval/fixtures/pull/5
+pr_head_sha: "fixture-sha-005"
+pr_base_sha: "fixture-sha-000"
+locale: en
+enabled_specialists: [security, correctness, performance, style]
+
+changed_files:
+  - path: api/files.py
+    content: |
+      import os
+      from flask import Flask, request, send_file
+
+      app = Flask(__name__)
+      BASE_DIR = "/var/app/uploads"
+
+      @app.route("/download")
+      def download():
+          filename = request.args.get("file", "")
+          filepath = os.path.join(BASE_DIR, filename)
+          return send_file(filepath)
+
+expected_findings:
+  - specialist: security
+    file: api/files.py
+    line_range: [10, 11]
+    description: >
+      Path traversal: `filename` comes from an untrusted request parameter and is joined
+      onto BASE_DIR without sanitization. An attacker can supply `../../etc/passwd` to
+      read arbitrary files outside the uploads directory. Validate with
+      `os.path.realpath` and assert the result starts with BASE_DIR, or use
+      `pathlib.Path.resolve()` with a containment check.
+    severity: critical
+
+negative_findings:
+  - description: >
+      Flagging os.path.join itself as unsafe is a false positive — the function is correct;
+      the issue is the missing containment check on the resulting path.
+
+expected_verdict: request_changes

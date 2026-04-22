@@ -1,0 +1,43 @@
+id: pr_006_insecure_pickle
+description: >
+  PR that deserializes untrusted POST body bytes with pickle.loads, enabling
+  arbitrary code execution. Ground truth for the Security specialist on
+  insecure deserialization (OWASP A8).
+
+pr_url: https://github.com/codeshield-eval/fixtures/pull/6
+pr_head_sha: "fixture-sha-006"
+pr_base_sha: "fixture-sha-000"
+locale: en
+enabled_specialists: [security, correctness, performance, style]
+
+changed_files:
+  - path: api/session.py
+    content: |
+      import pickle
+      from flask import Flask, request, jsonify
+
+      app = Flask(__name__)
+
+      @app.route("/restore", methods=["POST"])
+      def restore_session():
+          data = request.get_data()
+          session = pickle.loads(data)
+          return jsonify({"user": session.get("user")})
+
+expected_findings:
+  - specialist: security
+    file: api/session.py
+    line_range: [9, 9]
+    description: >
+      Insecure deserialization: `pickle.loads` on untrusted request bytes allows remote
+      code execution. An attacker can craft a pickle payload that executes arbitrary
+      system commands when deserialized. Use a safe format (JSON, msgpack) or verify
+      a HMAC signature before deserializing.
+    severity: critical
+
+negative_findings:
+  - description: >
+      Flagging the import of the pickle module itself as the vulnerability is a false positive —
+      pickle is safe when used on data from trusted internal sources.
+
+expected_verdict: request_changes

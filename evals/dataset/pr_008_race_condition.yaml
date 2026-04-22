@@ -1,0 +1,49 @@
+id: pr_008_race_condition
+description: >
+  PR that introduces a shared mutable counter incremented from multiple threads
+  without a lock. Ground truth for the Correctness specialist on thread-safety.
+
+pr_url: https://github.com/codeshield-eval/fixtures/pull/8
+pr_head_sha: "fixture-sha-008"
+pr_base_sha: "fixture-sha-000"
+locale: en
+enabled_specialists: [security, correctness, performance, style]
+
+changed_files:
+  - path: workers/counter.py
+    content: |
+      import threading
+
+      _request_count = 0
+
+      def record_request() -> None:
+          global _request_count
+          _request_count += 1
+
+      def get_count() -> int:
+          return _request_count
+
+      def start_workers(n: int) -> None:
+          threads = [threading.Thread(target=record_request) for _ in range(n)]
+          for t in threads:
+              t.start()
+          for t in threads:
+              t.join()
+
+expected_findings:
+  - specialist: correctness
+    file: workers/counter.py
+    line_range: [6, 7]
+    description: >
+      Race condition: `_request_count += 1` is a read-modify-write operation on a
+      shared global. When `record_request` is called from multiple threads concurrently,
+      increments can be lost. Protect the counter with `threading.Lock` or use
+      `threading.local` for per-thread counts.
+    severity: high
+
+negative_findings:
+  - description: >
+      Flagging the use of global variables in general is a false positive —
+      module-level state is the appropriate design here; the issue is missing synchronization.
+
+expected_verdict: request_changes

@@ -1,0 +1,39 @@
+id: pr_015_clean_null_guard
+description: >
+  PR that correctly adds a null guard before accessing an attribute on a value
+  that may be None. This is a clean fix — no issues should be found.
+  Tests the system's ability to approve a correct PR without false positives.
+
+pr_url: https://github.com/codeshield-eval/fixtures/pull/15
+pr_head_sha: "fixture-sha-015"
+pr_base_sha: "fixture-sha-000"
+locale: en
+enabled_specialists: [security, correctness, performance, style]
+
+changed_files:
+  - path: services/users.py
+    content: |
+      from typing import Optional
+
+      def find_user(user_id: int, users: dict) -> Optional[dict]:
+          """Look up a user by ID, return None if not found."""
+          return users.get(user_id)
+
+      def get_username(user_id: int, users: dict) -> str:
+          user = find_user(user_id, users)
+          if user is None:
+              return "unknown"
+          return user["name"]
+
+expected_findings: []
+
+negative_findings:
+  - description: >
+      Flagging Optional[dict] as a type annotation that should be dict | None
+      is a pedantic style suggestion, not a finding — both forms are equivalent
+      in Python 3.10+ but Optional is still idiomatic in 3.9 codebases.
+  - description: >
+      Flagging the hardcoded "unknown" fallback as a magic string is a false
+      positive — it is a sentinel value, not user-facing content requiring i18n.
+
+expected_verdict: approve

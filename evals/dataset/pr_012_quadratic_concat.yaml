@@ -1,0 +1,39 @@
+id: pr_012_quadratic_concat
+description: >
+  PR that builds a large string by repeatedly concatenating with += inside a loop,
+  causing O(n²) memory allocations. Ground truth for the Performance specialist
+  on string concatenation patterns.
+
+pr_url: https://github.com/codeshield-eval/fixtures/pull/12
+pr_head_sha: "fixture-sha-012"
+pr_base_sha: "fixture-sha-000"
+locale: en
+enabled_specialists: [security, correctness, performance, style]
+
+changed_files:
+  - path: exporters/csv_writer.py
+    content: |
+      def build_csv(rows: list[list[str]]) -> str:
+          output = ""
+          for row in rows:
+              line = ",".join(row)
+              output += line + "\n"
+          return output
+
+expected_findings:
+  - specialist: performance
+    file: exporters/csv_writer.py
+    line_range: [4, 5]
+    description: >
+      O(n²) string concatenation: each `+=` on an immutable str creates a new
+      string object copying all previous content. For large row counts this is
+      quadratic in time and memory. Accumulate parts in a list and return
+      `"".join(parts)` instead.
+    severity: medium
+
+negative_findings:
+  - description: >
+      Flagging the use of str.join() on the inner row fields as slow is a false positive —
+      that call is correct and efficient; only the outer loop accumulation is the problem.
+
+expected_verdict: request_changes

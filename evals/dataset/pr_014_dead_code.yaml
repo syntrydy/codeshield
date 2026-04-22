@@ -1,0 +1,44 @@
+id: pr_014_dead_code
+description: >
+  PR that leaves a legacy helper function in the module even though it is no
+  longer called anywhere in the codebase. Ground truth for the Style specialist
+  on dead code.
+
+pr_url: https://github.com/codeshield-eval/fixtures/pull/14
+pr_head_sha: "fixture-sha-014"
+pr_base_sha: "fixture-sha-000"
+locale: en
+enabled_specialists: [security, correctness, performance, style]
+
+changed_files:
+  - path: billing/discounts.py
+    content: |
+      def calculate_discount(price: float, tier: str) -> float:
+          if tier == "gold":
+              return price * 0.8
+          elif tier == "silver":
+              return price * 0.9
+          return price
+
+
+      def _apply_legacy_discount(price: float) -> float:
+          """Legacy discount logic replaced by calculate_discount. No longer called."""
+          return price * 0.85
+
+expected_findings:
+  - specialist: style
+    file: billing/discounts.py
+    line_range: [9, 11]
+    description: >
+      Dead code: `_apply_legacy_discount` is defined but never called. Its docstring
+      confirms it was replaced. Remove it to prevent confusion about which function
+      is authoritative and to keep the module surface clean.
+    severity: low
+
+negative_findings:
+  - description: >
+      Flagging `calculate_discount` for not handling unknown tiers with an explicit
+      error is a style opinion, not a correctness bug — returning full price for
+      unknown tiers is a valid default.
+
+expected_verdict: request_changes

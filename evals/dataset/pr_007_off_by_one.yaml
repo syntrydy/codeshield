@@ -1,0 +1,38 @@
+id: pr_007_off_by_one
+description: >
+  PR that adds a sliding-window function with an off-by-one error in the loop
+  bound, causing an IndexError on the last iteration.
+  Ground truth for the Correctness specialist.
+
+pr_url: https://github.com/codeshield-eval/fixtures/pull/7
+pr_head_sha: "fixture-sha-007"
+pr_base_sha: "fixture-sha-000"
+locale: en
+enabled_specialists: [security, correctness, performance, style]
+
+changed_files:
+  - path: utils/stats.py
+    content: |
+      def pairwise_max(nums: list[int]) -> list[int]:
+          """Return the maximum of each consecutive pair."""
+          results = []
+          for i in range(len(nums)):
+              results.append(max(nums[i], nums[i + 1]))
+          return results
+
+expected_findings:
+  - specialist: correctness
+    file: utils/stats.py
+    line_range: [4, 5]
+    description: >
+      Off-by-one: the loop iterates `range(len(nums))`, so on the final iteration
+      `i == len(nums) - 1` and `nums[i + 1]` raises IndexError. The upper bound
+      should be `range(len(nums) - 1)`.
+    severity: high
+
+negative_findings:
+  - description: >
+      Flagging the use of max() as a performance concern is a false positive for
+      a two-element comparison in a utility function.
+
+expected_verdict: request_changes

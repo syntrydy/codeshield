@@ -1,0 +1,47 @@
+id: pr_009_swallowed_exception
+description: >
+  PR that silently swallows all exceptions in a config loader, returning an
+  empty dict on any error — including permission denied and malformed JSON.
+  Ground truth for the Correctness specialist on error handling.
+
+pr_url: https://github.com/codeshield-eval/fixtures/pull/9
+pr_head_sha: "fixture-sha-009"
+pr_base_sha: "fixture-sha-000"
+locale: en
+enabled_specialists: [security, correctness, performance, style]
+
+changed_files:
+  - path: core/config_loader.py
+    content: |
+      import json
+      import logging
+
+      logger = logging.getLogger(__name__)
+
+      def load_config(path: str) -> dict:
+          try:
+              with open(path) as f:
+                  return json.load(f)
+          except Exception:
+              pass
+          return {}
+
+expected_findings:
+  - specialist: correctness
+    file: core/config_loader.py
+    line_range: [9, 10]
+    description: >
+      Silent exception swallow: `except Exception: pass` hides file-not-found,
+      permission errors, and JSON parse failures. Callers receive an empty dict
+      and have no way to distinguish a missing config from a corrupt one.
+      At minimum, log the exception; for critical config, re-raise or return a
+      typed error result.
+    severity: medium
+
+negative_findings:
+  - description: >
+      Flagging the use of a broad `except Exception` clause as always wrong is a
+      false positive — it is acceptable when all error cases produce the same safe
+      default AND the exception is logged. The issue here is the missing log.
+
+expected_verdict: request_changes

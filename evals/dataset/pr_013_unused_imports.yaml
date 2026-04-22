@@ -1,0 +1,47 @@
+id: pr_013_unused_imports
+description: >
+  PR that adds a new utility module with several unused top-level imports left
+  over from copy-paste. Ground truth for the Style specialist.
+
+pr_url: https://github.com/codeshield-eval/fixtures/pull/13
+pr_head_sha: "fixture-sha-013"
+pr_base_sha: "fixture-sha-000"
+locale: en
+enabled_specialists: [security, correctness, performance, style]
+
+changed_files:
+  - path: utils/text.py
+    content: |
+      import os
+      import sys
+      import json
+      import hashlib
+      from pathlib import Path
+
+      def slugify(text: str) -> str:
+          """Convert a string to a URL-safe slug."""
+          return text.lower().strip().replace(" ", "-")
+
+      def truncate(text: str, max_len: int = 100) -> str:
+          """Truncate text to max_len characters, appending ellipsis if needed."""
+          if len(text) <= max_len:
+              return text
+          return text[:max_len - 1] + "…"
+
+expected_findings:
+  - specialist: style
+    file: utils/text.py
+    line_range: [1, 4]
+    description: >
+      Unused imports: `os`, `sys`, `json`, and `hashlib` are imported but never
+      referenced in the module. Remove them to keep the namespace clean and avoid
+      misleading readers about the module's dependencies.
+    severity: low
+
+negative_findings:
+  - description: >
+      Flagging the import of pathlib.Path as unused is a false positive if the
+      module is intended to grow — but in this case Path is also unused, so it
+      should be flagged along with the others.
+
+expected_verdict: request_changes

@@ -1,0 +1,42 @@
+id: pr_004_xss
+description: >
+  PR that renders user-supplied query parameter directly into an HTML response
+  via render_template_string without escaping. Ground truth for the Security
+  specialist on reflected XSS.
+
+pr_url: https://github.com/codeshield-eval/fixtures/pull/4
+pr_head_sha: "fixture-sha-004"
+pr_base_sha: "fixture-sha-000"
+locale: en
+enabled_specialists: [security, correctness, performance, style]
+
+changed_files:
+  - path: web/search.py
+    content: |
+      from flask import Flask, request, render_template_string
+
+      app = Flask(__name__)
+
+      @app.route("/search")
+      def search():
+          query = request.args.get("q", "")
+          return render_template_string(f"<h1>Results for: {query}</h1>")
+
+expected_findings:
+  - specialist: security
+    file: web/search.py
+    line_range: [8, 8]
+    description: >
+      Reflected XSS: user-supplied `query` from the request parameter is interpolated
+      directly into the HTML template string without escaping. An attacker can inject
+      `<script>` tags or event handlers. Use `escape()` from markupsafe or pass
+      data through context variables where Jinja2 auto-escaping applies.
+    severity: high
+
+negative_findings:
+  - description: >
+      Flagging the use of render_template_string itself as dangerous is a false positive —
+      the function is safe when variables are passed as context kwargs rather than
+      interpolated directly into the template string.
+
+expected_verdict: request_changes

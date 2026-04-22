@@ -1,0 +1,44 @@
+id: pr_011_blocking_in_async
+description: >
+  PR that calls time.sleep() inside an async function, blocking the entire
+  event loop for the duration. Ground truth for the Performance specialist
+  on blocking I/O in async code.
+
+pr_url: https://github.com/codeshield-eval/fixtures/pull/11
+pr_head_sha: "fixture-sha-011"
+pr_base_sha: "fixture-sha-000"
+locale: en
+enabled_specialists: [security, correctness, performance, style]
+
+changed_files:
+  - path: tasks/processor.py
+    content: |
+      import asyncio
+      import time
+
+      async def process_batch(items: list) -> list:
+          results = []
+          for item in items:
+              time.sleep(0.5)
+              result = item * 2
+              results.append(result)
+          return results
+
+expected_findings:
+  - specialist: performance
+    file: tasks/processor.py
+    line_range: [7, 7]
+    description: >
+      Blocking call in async function: `time.sleep(0.5)` blocks the entire event loop
+      thread for 500ms per item, preventing all other coroutines from running.
+      Replace with `await asyncio.sleep(0.5)`. If the sleep simulates I/O, use
+      `asyncio.to_thread` to offload to a thread pool instead.
+    severity: high
+
+negative_findings:
+  - description: >
+      Flagging the use of a for loop instead of asyncio.gather is a stylistic
+      suggestion, not a correctness or blocking issue — sequential processing
+      may be intentional here.
+
+expected_verdict: request_changes
