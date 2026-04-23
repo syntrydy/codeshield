@@ -11,6 +11,7 @@ import { RunDetailPage } from "./pages/RunDetailPage";
 import { GitHubCallbackPage } from "./pages/GitHubCallbackPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { AllRunsPage } from "./pages/AllRunsPage";
+import { AboutPage } from "./pages/AboutPage";
 
 export default function App() {
   return (
@@ -69,6 +70,7 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="/about" element={<AboutPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           </BrowserRouter>

@@ -61,6 +61,15 @@ export function AppLayout({ activePage, breadcrumb, hasProjects, children }: App
           {hasProjects && navItem("projects", "/projects", "folder", t("dashboard.nav.projects"))}
           {hasProjects && navItem("runs", "/runs", "history", t("dashboard.nav.runs"))}
           {navItem("settings", "/settings", "settings", t("dashboard.nav.settings"))}
+          <a
+            href="/about"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 h-10 pl-4 text-sm tracking-tight transition-colors text-zinc-500 hover:text-zinc-950 hover:bg-zinc-50"
+          >
+            <span className="material-symbols-outlined text-[20px]">help</span>
+            {t("about.navTooltip")}
+          </a>
         </nav>
 
         <div className="px-2 pt-4 mt-4 border-t border-zinc-100 space-y-1">
