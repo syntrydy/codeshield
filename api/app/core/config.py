@@ -35,7 +35,8 @@ class Settings(BaseSettings):
     langsmith_project: str = "code-review-dev"
     langchain_tracing_v2: bool = True
 
-    # Redis
+    # Cache: DynamoDB table name in production, Redis URL for local dev
+    cache_table_name: str | None = None
     redis_url: RedisDsn = Field(default="redis://localhost:6379/0")  # type: ignore[assignment]
 
     # API service

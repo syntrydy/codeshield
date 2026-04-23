@@ -19,12 +19,13 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
-# Read .env, stripping comments and blank lines
+# Read .env, stripping comments and blank lines. Returns empty string if key is absent.
 _env_val() {
-  grep -E "^${1}=" "$ENV_FILE" | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"
+  grep -E "^${1}=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'" || true
 }
 
 GITHUB_APP_ID=$(_env_val "GITHUB_APP_ID")
+GITHUB_APP_SLUG=$(_env_val "GITHUB_APP_SLUG")
 GITHUB_WEBHOOK_SECRET=$(_env_val "GITHUB_WEBHOOK_SECRET")
 SUPABASE_SECRET_KEY=$(_env_val "SUPABASE_SECRET_KEY")
 SUPABASE_JWT_SECRET=$(_env_val "SUPABASE_JWT_SECRET")
@@ -59,6 +60,7 @@ echo "Populating secrets for prefix: $NAME_PREFIX"
 echo
 
 _put "github_app_id"            "$GITHUB_APP_ID"
+_put "github_app_slug"          "$GITHUB_APP_SLUG"
 _put "github_private_key"       "$GITHUB_PRIVATE_KEY"
 _put "github_webhook_secret"    "$GITHUB_WEBHOOK_SECRET"
 _put "supabase_service_role_key" "$SUPABASE_SECRET_KEY"
@@ -67,10 +69,8 @@ _put "anthropic_api_key"        "$ANTHROPIC_API_KEY"
 _put "langsmith_api_key"        "$LANGSMITH_API_KEY"
 
 echo
-echo "Done. ECS tasks will pick up new values on next deployment."
-echo "Force a rolling restart now:"
+echo "Done. Lambda picks up new secrets on the next cold start automatically."
+echo "To force App Runner to restart with the new values:"
 echo
-echo "  aws ecs update-service --cluster ${NAME_PREFIX}-cluster \\"
-echo "    --service ${NAME_PREFIX}-api --force-new-deployment --region $AWS_REGION"
-echo "  aws ecs update-service --cluster ${NAME_PREFIX}-cluster \\"
-echo "    --service ${NAME_PREFIX}-worker --force-new-deployment --region $AWS_REGION"
+echo "  APPRUNNER_ARN=\$(cd infra && terraform output -raw apprunner_service_id)"
+echo "  aws apprunner start-deployment --service-arn \"\$APPRUNNER_ARN\" --region $AWS_REGION"

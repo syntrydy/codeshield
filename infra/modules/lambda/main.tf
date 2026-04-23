@@ -6,6 +6,8 @@ variable "secrets_prefix"      { type = string }
 variable "supabase_url"        { type = string }
 variable "supabase_anon_key"   { type = string }
 variable "aws_region"          { type = string }
+variable "cache_table_name"    { type = string }
+variable "cache_table_arn"     { type = string }
 
 # ── IAM role ──────────────────────────────────────────────────────────────────
 
@@ -42,6 +44,12 @@ data "aws_iam_policy_document" "lambda_perms" {
     actions   = ["secretsmanager:GetSecretValue"]
     resources = ["arn:aws:secretsmanager:${var.aws_region}:*:secret:${var.secrets_prefix}/*"]
   }
+
+  # DynamoDB cache table
+  statement {
+    actions   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"]
+    resources = [var.cache_table_arn]
+  }
 }
 
 resource "aws_iam_role_policy" "lambda" {
@@ -71,12 +79,12 @@ resource "aws_lambda_function" "worker" {
 
   environment {
     variables = {
-      TASK_BACKEND    = "sqs"
-      SQS_QUEUE_URL   = var.sqs_queue_url
-      SECRETS_PREFIX  = var.secrets_prefix
-      SUPABASE_URL    = var.supabase_url
+      TASK_BACKEND             = "sqs"
+      SQS_QUEUE_URL            = var.sqs_queue_url
+      SECRETS_PREFIX           = var.secrets_prefix
+      SUPABASE_URL             = var.supabase_url
       SUPABASE_PUBLISHABLE_KEY = var.supabase_anon_key
-      AWS_DEFAULT_REGION = var.aws_region
+      CACHE_TABLE_NAME         = var.cache_table_name
     }
   }
 

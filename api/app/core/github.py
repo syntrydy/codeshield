@@ -7,13 +7,13 @@ from typing import Any
 import httpx
 import jwt
 
+from app.core.cache import cache_get, cache_set
 from app.core.config import get_settings
-from app.core.redis import get_redis
 
 logger = logging.getLogger(__name__)
 
 _TOKEN_TTL_SECONDS = 55 * 60  # GitHub tokens live 60 min; refresh with a 5-min buffer
-_REDIS_KEY_PREFIX = "gh:token:"
+_TOKEN_KEY_PREFIX = "gh:token:"
 _GH_API = "https://api.github.com"
 _GH_ACCEPT = "application/vnd.github+json"
 _GH_VERSION = "2022-11-28"
@@ -65,12 +65,10 @@ def get_installation_token(installation_id: int) -> str:
     Mints a new token via the GitHub API when the cache is cold or near expiry.
     Raises httpx.HTTPStatusError on GitHub API errors.
     """
-    redis = get_redis()
-    cache_key = f"{_REDIS_KEY_PREFIX}{installation_id}"
-
-    cached = redis.get(cache_key)
+    cache_key = f"{_TOKEN_KEY_PREFIX}{installation_id}"
+    cached = cache_get(cache_key)
     if cached:
-        return cached.decode() if isinstance(cached, bytes) else str(cached)
+        return cached
 
     app_jwt = _make_app_jwt()
     url = f"https://api.github.com/app/installations/{installation_id}/access_tokens"
@@ -86,7 +84,7 @@ def get_installation_token(installation_id: int) -> str:
     resp.raise_for_status()
     token: str = resp.json()["token"]
 
-    redis.setex(cache_key, _TOKEN_TTL_SECONDS, token)
+    cache_set(cache_key, token, _TOKEN_TTL_SECONDS)
     logger.info("Minted new installation token", extra={"installation_id": installation_id})
     return token
 

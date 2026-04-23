@@ -67,21 +67,17 @@ def mock_settings(monkeypatch):  # type: ignore[no-untyped-def]
 
 @pytest.fixture
 def mock_redis():  # type: ignore[no-untyped-def]
-    """Fake Redis that tracks seen delivery IDs in memory."""
+    """Fake cache that tracks seen delivery IDs in memory."""
     seen: set[str] = set()
 
-    class FakeRedis:
-        def set(self, key: str, value: object, ex: int = 0, nx: bool = False) -> bool:
-            if nx and key in seen:
-                return False
-            seen.add(key)
-            return True
+    def fake_set_nx(key: str, ttl: int) -> bool:
+        if key in seen:
+            return False
+        seen.add(key)
+        return True
 
-        def get(self, key: str) -> None:
-            return None
-
-    with patch("app.webhooks.github.get_redis", return_value=FakeRedis()):
-        yield FakeRedis()
+    with patch("app.webhooks.github.cache_set_nx", side_effect=fake_set_nx):
+        yield
 
 
 @pytest.fixture

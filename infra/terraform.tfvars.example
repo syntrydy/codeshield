@@ -1,23 +1,13 @@
-# Copy to terraform.tfvars and fill in real values.
+# Copy to terraform.tfvars and fill in your Supabase values.
 # Never commit terraform.tfvars — it is in .gitignore.
+# All other variables have sensible defaults (see variables.tf).
 
-aws_region  = "us-east-1"
-environment = "prod"
+supabase_url      = "https://YOUR_PROJECT_REF.supabase.co"
+supabase_anon_key = "YOUR_SUPABASE_ANON_KEY"
 
-availability_zones = ["us-east-1a", "us-east-1b"]
-
-# ACM certificate ARN for the ALB HTTPS listener.
-# Run scripts/request-cert.sh — it prints the DNS CNAME to add at your provider:
-#   DOMAIN=codeshield.yourdomain.com ./scripts/request-cert.sh
-acm_certificate_arn = "arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERT_ID"
-
-# Docker image tag to deploy. In CI this is set to the commit SHA automatically.
-image_tag = "latest"
-
-# Optional: custom subdomain for the React frontend via CloudFront.
-# Without these the frontend is reachable at the cloudfront.net domain printed
-# by 'terraform output cloudfront_domain'.
-# Run scripts/request-cert.sh to get the ARN, then add a CNAME at your DNS
-# provider pointing cloudfront_domain → the value from terraform output.
+# Optional: custom domain for the React frontend via CloudFront.
+# Requires an ACM certificate in us-east-1. Omit to use the auto-assigned
+# cloudfront.net domain printed by 'terraform output cloudfront_domain'.
+#
 # cloudfront_certificate_arn = "arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERT_ID"
 # cloudfront_domain          = "app.yourdomain.com"

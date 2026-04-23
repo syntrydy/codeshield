@@ -36,9 +36,9 @@ module "secrets" {
   name_prefix = local.name_prefix
 }
 
-# ── Redis Serverless (installation token cache) ────────────────────────────────
-module "redis" {
-  source = "./modules/redis_serverless"
+# ── DynamoDB cache (installation token cache + webhook idempotency) ────────────
+module "dynamo_cache" {
+  source = "./modules/dynamo_cache"
 
   name_prefix = local.name_prefix
 }
@@ -54,28 +54,33 @@ module "sqs" {
 module "lambda" {
   source = "./modules/lambda"
 
-  name_prefix       = local.name_prefix
-  image_uri         = "${module.ecr.api_repo_url}:${var.image_tag}"
-  sqs_queue_arn     = module.sqs.queue_arn
-  sqs_queue_url     = module.sqs.queue_url
-  secrets_prefix    = local.name_prefix
-  supabase_url      = var.supabase_url
-  supabase_anon_key = var.supabase_anon_key
-  aws_region        = var.aws_region
+  name_prefix        = local.name_prefix
+  image_uri          = "${module.ecr.api_repo_url}:${var.image_tag}"
+  sqs_queue_arn      = module.sqs.queue_arn
+  sqs_queue_url      = module.sqs.queue_url
+  secrets_prefix     = local.name_prefix
+  supabase_url       = var.supabase_url
+  supabase_anon_key  = var.supabase_anon_key
+  aws_region         = var.aws_region
+  cache_table_name   = module.dynamo_cache.table_name
+  cache_table_arn    = module.dynamo_cache.table_arn
 }
 
 # ── App Runner API service ─────────────────────────────────────────────────────
 module "apprunner" {
   source = "./modules/apprunner"
 
-  name_prefix       = local.name_prefix
-  image_uri         = "${module.ecr.api_repo_url}:${var.image_tag}"
-  aws_region        = var.aws_region
-  secrets_prefix    = local.name_prefix
-  sqs_queue_url     = module.sqs.queue_url
-  supabase_url      = var.supabase_url
-  supabase_anon_key = var.supabase_anon_key
-  redis_url         = module.redis.redis_url
+  name_prefix        = local.name_prefix
+  image_uri          = "${module.ecr.api_repo_url}:${var.image_tag}"
+  aws_region         = var.aws_region
+  secrets_prefix     = local.name_prefix
+  sqs_queue_url      = module.sqs.queue_url
+  supabase_url       = var.supabase_url
+  supabase_anon_key  = var.supabase_anon_key
+  cache_table_name   = module.dynamo_cache.table_name
+  cache_table_arn    = module.dynamo_cache.table_arn
+  secret_arns        = module.secrets.secret_arns
+  cloudfront_domain  = module.cloudfront.cloudfront_domain
 }
 
 # ── S3 buckets ─────────────────────────────────────────────────────────────────

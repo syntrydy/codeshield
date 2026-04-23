@@ -5,7 +5,10 @@ variable "secrets_prefix"      { type = string }
 variable "sqs_queue_url"       { type = string }
 variable "supabase_url"        { type = string }
 variable "supabase_anon_key"   { type = string }
-variable "redis_url"           { type = string }
+variable "cache_table_name"    { type = string }
+variable "cache_table_arn"     { type = string }
+variable "secret_arns"         { type = map(string) }
+variable "cloudfront_domain"   { type = string }
 
 # ── IAM roles ──────────────────────────────────────────────────────────────────
 
@@ -56,6 +59,12 @@ data "aws_iam_policy_document" "instance_perms" {
     actions   = ["sqs:SendMessage", "sqs:GetQueueAttributes"]
     resources = ["*"]
   }
+
+  # DynamoDB cache table
+  statement {
+    actions   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"]
+    resources = [var.cache_table_arn]
+  }
 }
 
 resource "aws_iam_role_policy" "instance" {
@@ -87,9 +96,19 @@ resource "aws_apprunner_service" "api" {
           SECRETS_PREFIX           = var.secrets_prefix
           SUPABASE_URL             = var.supabase_url
           SUPABASE_PUBLISHABLE_KEY = var.supabase_anon_key
-          REDIS_URL                = var.redis_url
+          CACHE_TABLE_NAME         = var.cache_table_name
           AWS_DEFAULT_REGION       = var.aws_region
           ENVIRONMENT              = "production"
+          CORS_ORIGINS             = "[\"https://${var.cloudfront_domain}\"]"
+        }
+
+        runtime_environment_secrets = {
+          SUPABASE_SECRET_KEY   = var.secret_arns["SUPABASE_SERVICE_ROLE_KEY"]
+          GITHUB_APP_ID         = var.secret_arns["GITHUB_APP_ID"]
+          GITHUB_APP_SLUG       = var.secret_arns["GITHUB_APP_SLUG"]
+          GITHUB_WEBHOOK_SECRET = var.secret_arns["GITHUB_WEBHOOK_SECRET"]
+          ANTHROPIC_API_KEY     = var.secret_arns["ANTHROPIC_API_KEY"]
+          LANGSMITH_API_KEY     = var.secret_arns["LANGSMITH_API_KEY"]
         }
       }
     }

@@ -5,8 +5,8 @@ import uuid
 
 from fastapi import APIRouter, Header, HTTPException, Request, Response, status
 
+from app.core.cache import cache_set_nx
 from app.core.config import get_settings
-from app.core.redis import get_redis
 from app.core.supabase import get_service_client
 from app.webhooks.verification import verify_signature
 
@@ -19,9 +19,8 @@ _IDEMPOTENCY_PREFIX = "delivery:"
 
 
 def _mark_seen(delivery_id: str) -> bool:
-    """Store the delivery ID in Redis. Returns True if this is the first time we see it."""
-    redis = get_redis()
-    return bool(redis.set(f"{_IDEMPOTENCY_PREFIX}{delivery_id}", 1, ex=_IDEMPOTENCY_TTL, nx=True))
+    """Store the delivery ID in the cache. Returns True if this is the first time we see it."""
+    return cache_set_nx(f"{_IDEMPOTENCY_PREFIX}{delivery_id}", _IDEMPOTENCY_TTL)
 
 
 def _create_run(
