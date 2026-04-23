@@ -15,16 +15,16 @@
 #   VITE_API_BASE_URL, VITE_GITHUB_APP_SLUG
 version: 0.2
 
-env:
-  variables:
-    IMAGE_TAG: $CODEBUILD_RESOLVED_SOURCE_VERSION
+# NOTE: IMAGE_TAG cannot live in env.variables because CODEBUILD_RESOLVED_SOURCE_VERSION
+# is not expanded inside that YAML section. Export it in pre_build instead.
 
 phases:
   pre_build:
     commands:
+      - export IMAGE_TAG=$CODEBUILD_RESOLVED_SOURCE_VERSION
       - echo "Logging in to Amazon ECR..."
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-      - API_REPO=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_API
+      - export API_REPO=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_API
 
   build:
     commands:

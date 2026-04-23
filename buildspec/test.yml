@@ -25,12 +25,12 @@ phases:
       - npm install -g pnpm
   pre_build:
     commands:
-      - cd api && uv sync
-      - cd ../web && pnpm install --frozen-lockfile
+      - cd $CODEBUILD_SRC_DIR/api && uv sync
+      - cd $CODEBUILD_SRC_DIR/web && pnpm install --frozen-lockfile
   build:
     commands:
-      - cd api && uv run ruff check . && uv run pytest -xvs
-      - cd ../web && pnpm build
+      - cd $CODEBUILD_SRC_DIR/api && uv run ruff check . && uv run pytest -xvs
+      - cd $CODEBUILD_SRC_DIR/web && pnpm build
       # pnpm lint + fast eval are temporarily dropped:
       #   - lint: pre-existing errors to clean up (mostly no-restricted-syntax for t('key'))
       #   - eval: evals/run.py builds a ReviewState missing newer required fields
