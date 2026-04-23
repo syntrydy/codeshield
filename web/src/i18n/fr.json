@@ -335,11 +335,11 @@
       "step8Desc": "annotations en ligne",
       "step9": "Supabase",
       "step9Desc": "résultats · événements Realtime",
-      "fanoutDesc": "Le planificateur dispatche jusqu'à quatre spécialistes en simultané. Chacun exécute une boucle ReAct indépendante avec jusqu'à 6 appels d'outils. L'échec d'un spécialiste n'interrompt jamais le run — il émet un événement d'échec et retourne une liste vide pour que l'agrégateur continue."
+      "fanoutDesc": "Le planner ne dispatche que les spécialistes activés dans les paramètres du projet — d'un à quatre — et les exécute en parallèle. Chacun est une boucle ReAct indépendante avec jusqu'à 6 appels d'outils. Une panne de spécialiste ne tue jamais le run : elle émet un événement d'échec et retourne une liste vide pour que l'agrégateur continue."
     },
     "specialists": {
       "title": "Agents Spécialistes",
-      "subtitle": "Chaque spécialiste est un agent ReAct avec accès complet aux outils du dépôt.",
+      "subtitle": "Quatre agents ReAct indépendants, chacun avec un accès complet aux outils du repository. Activez n'importe quel sous-ensemble par projet selon vos priorités de review.",
       "securityTitle": "Sécurité",
       "securityDesc": "Identifie les vulnérabilités, vecteurs d'injection, failles d'authentification et usages cryptographiques non sécurisés.",
       "securityEx1": "Entrée utilisateur non assainie dans les requêtes ORM",

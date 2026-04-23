@@ -1,22 +1,90 @@
 import { useTranslation } from "react-i18next";
 
+/* ── Design tokens (inline to keep this page self-contained) ── */
+const BG = "#080c10";
+const SURFACE = "#0d1117";
+const CARD = "#111820";
+const BORDER = "#1e2d3d";
+const BORDER_DIM = "#16202c";
+const TEXT = "#e8edf2";
+const MUTED = "#6b8394";
+const ACCENT = "#00e5ff";
+const ACCENT2 = "#7b61ff";
+const ACCENT3 = "#ff6b35";
+
+const FONT_DISPLAY = "'Syne', sans-serif";
+const FONT_MONO = "'Space Mono', monospace";
+
+const NOISE_SVG =
+  "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E\")";
+
 export function AboutPage() {
   const { t } = useTranslation();
 
   return (
-    <div className="min-h-screen bg-white font-body text-zinc-900 antialiased">
+    <div
+      className="min-h-screen antialiased"
+      style={{ background: BG, color: TEXT, fontFamily: FONT_MONO, fontSize: 14, lineHeight: 1.7 }}
+    >
+      <style>{`
+        @keyframes csFadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes csPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
+        .cs-fade-1 { animation: csFadeUp 0.6s ease both; }
+        .cs-fade-2 { animation: csFadeUp 0.6s 0.1s ease both; }
+        .cs-fade-3 { animation: csFadeUp 0.6s 0.2s ease both; }
+        .cs-fade-4 { animation: csFadeUp 0.6s 0.3s ease both; }
+        .cs-fade-5 { animation: csFadeUp 0.6s 0.4s ease both; }
+        .cs-pulse { animation: csPulse 2s infinite; }
+        .cs-card { transition: transform 0.3s, border-color 0.3s; position: relative; overflow: hidden; }
+        .cs-card::before {
+          content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+          background: linear-gradient(90deg, ${ACCENT}, ${ACCENT2});
+          transform: scaleX(0); transform-origin: left; transition: transform 0.3s;
+        }
+        .cs-card:hover { border-color: ${ACCENT} !important; transform: translateY(-4px); }
+        .cs-card:hover::before { transform: scaleX(1); }
+        .cs-linklet:hover { color: ${ACCENT} !important; }
+      `}</style>
 
-      {/* ── Header ── */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-zinc-100">
-        <div className="px-10 h-14 flex items-center justify-between">
+      {/* ── Noise overlay ── */}
+      <div
+        className="fixed inset-0 pointer-events-none"
+        style={{ backgroundImage: NOISE_SVG, opacity: 0.4, zIndex: 9999 }}
+      />
+
+      {/* ── Sticky nav ── */}
+      <header
+        className="sticky top-0 z-40"
+        style={{
+          background: "rgba(8,12,16,0.85)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          borderBottom: `1px solid ${BORDER}`,
+        }}
+      >
+        <div className="max-w-[1200px] mx-auto flex items-center justify-between px-12 py-5">
           <div className="flex items-center gap-3">
-            <img src="/logo.jpg" alt="CodeShield" className="h-8 w-auto" />
-            <span className="text-zinc-200 select-none">|</span>
-            <span className="text-sm font-medium text-zinc-400 tracking-tight">
+            <img src="/logo.jpg" alt="CodeShield" className="h-7 w-auto" />
+            <span style={{ color: BORDER, userSelect: "none" }}>|</span>
+            <span
+              className="uppercase"
+              style={{ color: MUTED, fontSize: 11, letterSpacing: "2px" }}
+            >
               {t("about.header.subtitle")}
             </span>
           </div>
-          <span className="text-[10px] font-mono text-zinc-400 border border-zinc-200 px-2.5 py-1 rounded-full">
+          <span
+            className="uppercase"
+            style={{
+              fontSize: 10,
+              letterSpacing: "2px",
+              color: ACCENT,
+              border: `1px solid ${ACCENT}33`,
+              background: `${ACCENT}0d`,
+              borderRadius: 4,
+              padding: "5px 12px",
+            }}
+          >
             {t("about.footer.version")}
           </span>
         </div>
@@ -24,227 +92,407 @@ export function AboutPage() {
 
       {/* ── Hero ── */}
       <section
-        className="relative bg-zinc-950 text-white overflow-hidden"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)",
-          backgroundSize: "28px 28px",
-        }}
+        className="relative overflow-hidden"
+        style={{ minHeight: "100vh", padding: "120px 48px 80px", display: "flex", alignItems: "center" }}
       >
-        {/* Emerald glow */}
+        {/* Grid background with radial mask */}
         <div
-          className="absolute top-0 left-0 w-96 h-96 rounded-full pointer-events-none"
+          className="absolute inset-0"
           style={{
-            background:
-              "radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)",
+            backgroundImage: `linear-gradient(${BORDER} 1px, transparent 1px), linear-gradient(90deg, ${BORDER} 1px, transparent 1px)`,
+            backgroundSize: "60px 60px",
+            opacity: 0.3,
+            maskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%)",
+            WebkitMaskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%)",
           }}
         />
-        <div className="relative px-10 py-28">
-          <div className="flex items-center gap-2 mb-8">
+        {/* Central cyan glow */}
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            width: 600,
+            height: 600,
+            borderRadius: "50%",
+            background: `radial-gradient(circle, ${ACCENT}14 0%, transparent 70%)`,
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+          }}
+        />
+
+        <div className="relative max-w-[1200px] mx-auto w-full">
+          {/* Pulse badge */}
+          <div
+            className="cs-fade-1 inline-flex items-center gap-2 uppercase"
+            style={{
+              background: `${ACCENT}10`,
+              border: `1px solid ${ACCENT}33`,
+              borderRadius: 4,
+              padding: "6px 14px",
+              fontSize: 11,
+              letterSpacing: "2px",
+              color: ACCENT,
+              marginBottom: 32,
+            }}
+          >
             <span
-              className="material-symbols-outlined text-emerald-400"
-              style={{ fontSize: "13px", fontVariationSettings: "'FILL' 1" }}
-            >
-              shield
-            </span>
-            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-[0.2em]">
-              CodeShield · AI Code Review
-            </span>
+              className="cs-pulse"
+              style={{ width: 6, height: 6, borderRadius: "50%", background: ACCENT, display: "inline-block" }}
+            />
+            CodeShield · AI Code Review
           </div>
 
-          <h1 className="text-6xl lg:text-7xl font-black tracking-tighter leading-[1.02] mb-8 max-w-4xl">
+          <h1
+            className="cs-fade-2"
+            style={{
+              fontFamily: FONT_DISPLAY,
+              fontSize: "clamp(48px, 7vw, 96px)",
+              fontWeight: 800,
+              lineHeight: 0.95,
+              letterSpacing: "-3px",
+              marginBottom: 24,
+              maxWidth: "1000px",
+              color: TEXT,
+            }}
+          >
             {t("about.hero.headline")}
           </h1>
 
-          <p className="text-zinc-400 text-xl leading-relaxed max-w-3xl mb-16 font-light">
+          <p
+            className="cs-fade-3"
+            style={{ maxWidth: 640, color: MUTED, lineHeight: 1.8, marginBottom: 48, fontSize: 15 }}
+          >
             {t("about.hero.subtext")}
           </p>
 
-          <div className="flex items-stretch gap-0 w-fit border border-zinc-800 rounded-2xl overflow-hidden">
+          {/* Divider + stat row */}
+          <div
+            className="cs-fade-4 flex flex-wrap"
+            style={{
+              gap: 48,
+              marginTop: 40,
+              paddingTop: 48,
+              borderTop: `1px solid ${BORDER}`,
+            }}
+          >
             <HeroStat value="4" label={t("about.hero.stat1Label")} />
-            <div className="w-px bg-zinc-800" />
             <HeroStat value={t("about.hero.stat2Value")} label={t("about.hero.stat2Label")} />
-            <div className="w-px bg-zinc-800" />
             <HeroStat value={t("about.hero.stat3Value")} label={t("about.hero.stat3Label")} />
           </div>
         </div>
       </section>
 
       {/* ── The Problem ── */}
-      <section className="px-10 py-24 bg-white">
-        <Eyebrow>{t("about.problem.title")}</Eyebrow>
-        <h2 className="text-4xl font-black tracking-tighter text-zinc-950 mt-3 mb-14">
-          {t("about.problem.subtitle")}
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            { num: "01", icon: "schedule", title: t("about.problem.card1Title"), desc: t("about.problem.card1Desc") },
-            { num: "02", icon: "shuffle",  title: t("about.problem.card2Title"), desc: t("about.problem.card2Desc") },
-            { num: "03", icon: "psychology", title: t("about.problem.card3Title"), desc: t("about.problem.card3Desc") },
-          ].map((c) => (
-            <div key={c.num} className="group relative border border-zinc-100 rounded-2xl p-8 hover:border-zinc-300 hover:shadow-sm transition-all">
-              <span className="block text-[56px] font-black text-zinc-100 leading-none mb-6 group-hover:text-zinc-200 transition-colors select-none">
-                {c.num}
-              </span>
-              <div className="w-9 h-9 bg-zinc-950 rounded-xl flex items-center justify-center mb-5">
-                <span className="material-symbols-outlined text-white" style={{ fontSize: "17px" }}>{c.icon}</span>
-              </div>
-              <h3 className="font-bold text-zinc-950 text-lg mb-3 tracking-tight">{c.title}</h3>
-              <p className="text-sm text-zinc-500 leading-relaxed">{c.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── The Solution ── */}
-      <section className="px-10 py-24 bg-zinc-950 text-white">
-        <Eyebrow light>{t("about.solution.title")}</Eyebrow>
-        <h2 className="text-4xl font-black tracking-tighter mt-3 mb-14 max-w-2xl">
-          {t("about.solution.subtitle")}
-        </h2>
+      <Section label={t("about.problem.title")} title={t("about.problem.subtitle")}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {[
-            { icon: "bolt",            title: t("about.solution.point1Title"), desc: t("about.solution.point1Desc") },
-            { icon: "verified",        title: t("about.solution.point2Title"), desc: t("about.solution.point2Desc") },
-            { icon: "search_insights", title: t("about.solution.point3Title"), desc: t("about.solution.point3Desc") },
-          ].map((s) => (
-            <div key={s.icon} className="border border-zinc-800 rounded-2xl p-7 hover:border-zinc-600 transition-colors">
-              <div className="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center mb-6">
-                <span className="material-symbols-outlined text-emerald-400" style={{ fontSize: "19px" }}>{s.icon}</span>
+            { num: "01", icon: "schedule",   title: t("about.problem.card1Title"), desc: t("about.problem.card1Desc") },
+            { num: "02", icon: "shuffle",    title: t("about.problem.card2Title"), desc: t("about.problem.card2Desc") },
+            { num: "03", icon: "psychology", title: t("about.problem.card3Title"), desc: t("about.problem.card3Desc") },
+          ].map((c) => (
+            <div
+              key={c.num}
+              className="cs-card"
+              style={{
+                background: CARD,
+                border: `1px solid ${BORDER}`,
+                borderRadius: 8,
+                padding: 28,
+              }}
+            >
+              <span
+                style={{
+                  display: "block",
+                  fontFamily: FONT_DISPLAY,
+                  fontSize: 48,
+                  fontWeight: 800,
+                  color: BORDER,
+                  lineHeight: 1,
+                  marginBottom: 20,
+                  letterSpacing: "-2px",
+                }}
+              >
+                {c.num}
+              </span>
+              <div
+                className="flex items-center justify-center"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 6,
+                  background: `${ACCENT}10`,
+                  border: `1px solid ${ACCENT}22`,
+                  marginBottom: 18,
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 17, color: ACCENT }}>
+                  {c.icon}
+                </span>
               </div>
-              <h3 className="font-bold text-white text-base mb-2 tracking-tight">{s.title}</h3>
-              <p className="text-sm text-zinc-400 leading-relaxed">{s.desc}</p>
+              <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 16, fontWeight: 700, color: TEXT, marginBottom: 10 }}>
+                {c.title}
+              </h3>
+              <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.7 }}>{c.desc}</p>
             </div>
           ))}
         </div>
-      </section>
+      </Section>
+
+      {/* ── The Solution ── */}
+      <Section label={t("about.solution.title")} title={t("about.solution.subtitle")} surface>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {[
+            { icon: "bolt",            title: t("about.solution.point1Title"), desc: t("about.solution.point1Desc"), color: ACCENT  },
+            { icon: "verified",        title: t("about.solution.point2Title"), desc: t("about.solution.point2Desc"), color: ACCENT2 },
+            { icon: "search_insights", title: t("about.solution.point3Title"), desc: t("about.solution.point3Desc"), color: ACCENT3 },
+          ].map((s) => (
+            <div
+              key={s.icon}
+              className="cs-card"
+              style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 28 }}
+            >
+              <div
+                className="flex items-center justify-center"
+                style={{
+                  width: 40, height: 40, borderRadius: 8,
+                  background: `${s.color}10`,
+                  border: `1px solid ${s.color}33`,
+                  marginBottom: 22,
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 19, color: s.color }}>
+                  {s.icon}
+                </span>
+              </div>
+              <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 16, fontWeight: 700, color: TEXT, marginBottom: 10 }}>
+                {s.title}
+              </h3>
+              <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.7 }}>{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
 
       {/* ── Tech Stack ── */}
-      <section className="px-10 py-24 bg-white">
-        <Eyebrow>{t("about.stack.title")}</Eyebrow>
-        <h2 className="text-4xl font-black tracking-tighter text-zinc-950 mt-3 mb-14">
-          {t("about.stack.subtitle")}
-        </h2>
+      <Section label={t("about.stack.title")} title={t("about.stack.subtitle")}>
         <TechStack />
-      </section>
+      </Section>
 
       {/* ── How It Works ── */}
-      <section className="px-10 py-24 bg-zinc-50">
-        <Eyebrow>{t("about.pipeline.title")}</Eyebrow>
-        <h2 className="text-4xl font-black tracking-tighter text-zinc-950 mt-3 mb-14">
-          {t("about.pipeline.subtitle")}
-        </h2>
+      <Section label={t("about.pipeline.title")} title={t("about.pipeline.subtitle")} surface>
         <Pipeline />
-      </section>
+      </Section>
 
       {/* ── Specialist Agents ── */}
-      <section className="px-10 py-24 bg-white">
-        <Eyebrow>{t("about.specialists.title")}</Eyebrow>
-        <h2 className="text-4xl font-black tracking-tighter text-zinc-950 mt-3 mb-14">
-          {t("about.specialists.subtitle")}
-        </h2>
+      <Section label={t("about.specialists.title")} title={t("about.specialists.subtitle")}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <SpecialistCard icon="security"     color="red"    title={t("about.specialists.securityTitle")}     desc={t("about.specialists.securityDesc")}     examples={[t("about.specialists.securityEx1"),     t("about.specialists.securityEx2"),     t("about.specialists.securityEx3")]} />
-          <SpecialistCard icon="bug_report"   color="blue"   title={t("about.specialists.correctnessTitle")}  desc={t("about.specialists.correctnessDesc")}  examples={[t("about.specialists.correctnessEx1"),  t("about.specialists.correctnessEx2"),  t("about.specialists.correctnessEx3")]} />
-          <SpecialistCard icon="speed"        color="amber"  title={t("about.specialists.performanceTitle")}  desc={t("about.specialists.performanceDesc")}  examples={[t("about.specialists.performanceEx1"),  t("about.specialists.performanceEx2"),  t("about.specialists.performanceEx3")]} />
-          <SpecialistCard icon="architecture" color="violet" title={t("about.specialists.styleTitle")}        desc={t("about.specialists.styleDesc")}        examples={[t("about.specialists.styleEx1"),        t("about.specialists.styleEx2"),        t("about.specialists.styleEx3")]} />
+          <SpecialistCard icon="security"     accent="#ff5577" title={t("about.specialists.securityTitle")}    desc={t("about.specialists.securityDesc")}    examples={[t("about.specialists.securityEx1"),    t("about.specialists.securityEx2"),    t("about.specialists.securityEx3")]} />
+          <SpecialistCard icon="bug_report"   accent={ACCENT}  title={t("about.specialists.correctnessTitle")} desc={t("about.specialists.correctnessDesc")} examples={[t("about.specialists.correctnessEx1"), t("about.specialists.correctnessEx2"), t("about.specialists.correctnessEx3")]} />
+          <SpecialistCard icon="speed"        accent={ACCENT3} title={t("about.specialists.performanceTitle")} desc={t("about.specialists.performanceDesc")} examples={[t("about.specialists.performanceEx1"), t("about.specialists.performanceEx2"), t("about.specialists.performanceEx3")]} />
+          <SpecialistCard icon="architecture" accent={ACCENT2} title={t("about.specialists.styleTitle")}       desc={t("about.specialists.styleDesc")}       examples={[t("about.specialists.styleEx1"),       t("about.specialists.styleEx2"),       t("about.specialists.styleEx3")]} />
         </div>
-      </section>
+      </Section>
 
       {/* ── Architecture Decisions ── */}
-      <section className="px-10 py-24 bg-zinc-50">
-        <Eyebrow>{t("about.decisions.title")}</Eyebrow>
-        <h2 className="text-4xl font-black tracking-tighter text-zinc-950 mt-3 mb-14">
-          {t("about.decisions.subtitle")}
-        </h2>
-        <div className="divide-y divide-zinc-100 border border-zinc-200 rounded-2xl overflow-hidden">
+      <Section label={t("about.decisions.title")} title={t("about.decisions.subtitle")} surface>
+        <div style={{ border: `1px solid ${BORDER}`, borderRadius: 8, overflow: "hidden", background: CARD }}>
           {([
-            { tag: "LangGraph",              title: t("about.decisions.langGraphTitle"),  desc: t("about.decisions.langGraphDesc") },
-            { tag: "Anthropic Claude",       title: t("about.decisions.claudeTitle"),     desc: t("about.decisions.claudeDesc") },
-            { tag: "LangSmith Hub",         title: t("about.decisions.langSmithTitle"),  desc: t("about.decisions.langSmithDesc") },
-            { tag: "Supabase",              title: t("about.decisions.supabaseTitle"),   desc: t("about.decisions.supabaseDesc") },
-            { tag: "AWS App Runner",        title: t("about.decisions.appRunnerTitle"),  desc: t("about.decisions.appRunnerDesc") },
-            { tag: "AWS Lambda",            title: t("about.decisions.lambdaTitle"),     desc: t("about.decisions.lambdaDesc") },
-            { tag: "AWS SQS",               title: t("about.decisions.sqsTitle"),        desc: t("about.decisions.sqsDesc") },
-            { tag: "ElastiCache Serverless", title: t("about.decisions.redisTitle"),      desc: t("about.decisions.redisDesc") },
-          ] as { tag: string; title: string; desc: string }[]).map(({ tag, title, desc }, i) => (
-            <div key={tag} className={`flex gap-6 p-6 ${i % 2 === 0 ? "bg-white" : "bg-zinc-50/60"} hover:bg-zinc-50 transition-colors`}>
-              <div className="flex-shrink-0 w-36 pt-0.5">
-                <span className="inline-block text-[10px] font-mono font-semibold bg-zinc-950 text-white px-2.5 py-1 rounded-full whitespace-nowrap">
+            { tag: "LangGraph",               title: t("about.decisions.langGraphTitle"),  desc: t("about.decisions.langGraphDesc") },
+            { tag: "Anthropic Claude",        title: t("about.decisions.claudeTitle"),     desc: t("about.decisions.claudeDesc") },
+            { tag: "LangSmith Hub",           title: t("about.decisions.langSmithTitle"),  desc: t("about.decisions.langSmithDesc") },
+            { tag: "Supabase",                title: t("about.decisions.supabaseTitle"),   desc: t("about.decisions.supabaseDesc") },
+            { tag: "AWS App Runner",          title: t("about.decisions.appRunnerTitle"),  desc: t("about.decisions.appRunnerDesc") },
+            { tag: "AWS Lambda",              title: t("about.decisions.lambdaTitle"),     desc: t("about.decisions.lambdaDesc") },
+            { tag: "AWS SQS",                 title: t("about.decisions.sqsTitle"),        desc: t("about.decisions.sqsDesc") },
+            { tag: "ElastiCache Serverless",  title: t("about.decisions.redisTitle"),      desc: t("about.decisions.redisDesc") },
+          ] as { tag: string; title: string; desc: string }[]).map(({ tag, title, desc }, i, arr) => (
+            <div
+              key={tag}
+              className="flex gap-6"
+              style={{
+                padding: "22px 24px",
+                borderBottom: i < arr.length - 1 ? `1px solid ${BORDER_DIM}` : "none",
+                background: i % 2 === 0 ? CARD : SURFACE,
+              }}
+            >
+              <div style={{ flex: "0 0 160px", paddingTop: 2 }}>
+                <span
+                  className="uppercase"
+                  style={{
+                    display: "inline-block",
+                    fontSize: 10,
+                    letterSpacing: "1px",
+                    background: `${ACCENT}0d`,
+                    color: ACCENT,
+                    border: `1px solid ${ACCENT}22`,
+                    padding: "4px 10px",
+                    borderRadius: 3,
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   {tag}
                 </span>
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-zinc-950 mb-1.5">{title}</p>
-                <p className="text-sm text-zinc-500 leading-relaxed">{desc}</p>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <p style={{ fontFamily: FONT_DISPLAY, fontSize: 15, fontWeight: 700, color: TEXT, marginBottom: 6 }}>
+                  {title}
+                </p>
+                <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.7 }}>{desc}</p>
               </div>
             </div>
           ))}
         </div>
-      </section>
+      </Section>
 
       {/* ── Infrastructure Philosophy ── */}
-      <section className="px-10 py-24 bg-zinc-950 text-white">
-        <Eyebrow light>{t("about.infra.title")}</Eyebrow>
-        <h2 className="text-4xl font-black tracking-tighter mt-3 mb-14 max-w-2xl">
-          {t("about.infra.subtitle")}
-        </h2>
+      <Section label={t("about.infra.title")} title={t("about.infra.subtitle")}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {[
             { icon: "power_off",  title: t("about.infra.card1Title"), desc: t("about.infra.card1Desc") },
             { icon: "hub",        title: t("about.infra.card2Title"), desc: t("about.infra.card2Desc") },
             { icon: "terminal",   title: t("about.infra.card3Title"), desc: t("about.infra.card3Desc") },
           ].map((c) => (
-            <div key={c.icon} className="border border-zinc-800 rounded-2xl p-7 hover:border-zinc-600 transition-colors">
-              <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center mb-6">
-                <span className="material-symbols-outlined text-zinc-300" style={{ fontSize: "19px" }}>{c.icon}</span>
+            <div
+              key={c.icon}
+              className="cs-card"
+              style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 28 }}
+            >
+              <div
+                className="flex items-center justify-center"
+                style={{
+                  width: 40, height: 40, borderRadius: 8,
+                  background: `${ACCENT2}10`,
+                  border: `1px solid ${ACCENT2}33`,
+                  marginBottom: 22,
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 19, color: ACCENT2 }}>
+                  {c.icon}
+                </span>
               </div>
-              <h3 className="font-bold text-white text-base mb-2 tracking-tight">{c.title}</h3>
-              <p className="text-sm text-zinc-400 leading-relaxed">{c.desc}</p>
+              <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 16, fontWeight: 700, color: TEXT, marginBottom: 10 }}>
+                {c.title}
+              </h3>
+              <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.7 }}>{c.desc}</p>
             </div>
           ))}
         </div>
-      </section>
+      </Section>
 
       {/* ── Footer ── */}
-      <footer className="px-10 py-10 bg-white border-t border-zinc-100 flex items-center justify-between flex-wrap gap-4">
+      <footer
+        className="flex items-center justify-between flex-wrap gap-4"
+        style={{
+          padding: "40px 48px",
+          borderTop: `1px solid ${BORDER}`,
+          maxWidth: 1200,
+          margin: "0 auto",
+        }}
+      >
         <div className="flex items-center gap-4">
-          <img src="/logo.jpg" alt="CodeShield" className="h-6 w-auto opacity-40" />
-          <span className="text-xs text-zinc-400">{t("about.footer.copyright")}</span>
+          <img src="/logo.jpg" alt="CodeShield" style={{ height: 22, opacity: 0.35 }} />
+          <span style={{ fontSize: 11, color: MUTED, letterSpacing: "0.5px" }}>
+            {t("about.footer.copyright")}
+          </span>
         </div>
         <div className="flex gap-2">
-          <span className="text-[10px] font-mono border border-zinc-200 text-zinc-400 px-2.5 py-1 rounded-full">
-            {t("about.footer.version")}
-          </span>
-          <span className="text-[10px] font-mono border border-zinc-200 text-zinc-400 px-2.5 py-1 rounded-full">
-            {t("about.footer.license")}
-          </span>
+          <FooterBadge>{t("about.footer.version")}</FooterBadge>
+          <FooterBadge>{t("about.footer.license")}</FooterBadge>
         </div>
       </footer>
-
     </div>
   );
 }
 
 /* ── Sub-components ── */
 
-function Eyebrow({ children, light = false }: { children: React.ReactNode; light?: boolean }) {
+function Section({
+  label,
+  title,
+  surface = false,
+  children,
+}: {
+  label: string;
+  title: string;
+  surface?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="w-4 h-px bg-emerald-500 block" />
-      <span className={`text-[10px] font-mono uppercase tracking-[0.18em] ${light ? "text-emerald-400" : "text-emerald-600"}`}>
+    <section style={{ background: surface ? SURFACE : BG }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "100px 48px" }}>
+        <div
+          className="uppercase"
+          style={{ fontSize: 11, letterSpacing: "3px", color: ACCENT, marginBottom: 12 }}
+        >
+          {label}
+        </div>
+        <h2
+          style={{
+            fontFamily: FONT_DISPLAY,
+            fontSize: "clamp(32px, 4vw, 52px)",
+            fontWeight: 800,
+            letterSpacing: "-1.5px",
+            lineHeight: 1,
+            marginBottom: 32,
+            color: TEXT,
+            maxWidth: 900,
+          }}
+        >
+          {title}
+        </h2>
+        <div
+          style={{
+            height: 1,
+            width: "100%",
+            background: `linear-gradient(90deg, ${ACCENT} 0%, transparent 60%)`,
+            marginBottom: 56,
+          }}
+        />
         {children}
-      </span>
-    </div>
+      </div>
+    </section>
   );
 }
 
 function HeroStat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="px-8 py-6">
-      <div className="text-3xl font-black font-mono text-white leading-none">{value}</div>
-      <div className="text-[10px] font-mono text-zinc-500 mt-2 uppercase tracking-wider">{label}</div>
+    <div style={{ minWidth: 120 }}>
+      <div
+        style={{
+          fontFamily: FONT_DISPLAY,
+          fontSize: 40,
+          fontWeight: 800,
+          color: ACCENT,
+          lineHeight: 1,
+        }}
+      >
+        {value}
+      </div>
+      <div
+        className="uppercase"
+        style={{ fontSize: 11, letterSpacing: "1.5px", color: MUTED, marginTop: 6 }}
+      >
+        {label}
+      </div>
     </div>
+  );
+}
+
+function FooterBadge({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      className="uppercase"
+      style={{
+        fontSize: 10,
+        letterSpacing: "1px",
+        border: `1px solid ${BORDER}`,
+        color: MUTED,
+        padding: "4px 10px",
+        borderRadius: 3,
+      }}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -255,7 +503,7 @@ function TechStack() {
     {
       label: t("about.stack.backendLabel"),
       icon: "terminal",
-      color: "text-violet-600 bg-violet-50 border-violet-100",
+      color: ACCENT2,
       items: [
         { name: "Python 3.12", note: "runtime" },
         { name: "FastAPI", note: "API" },
@@ -268,7 +516,7 @@ function TechStack() {
     {
       label: t("about.stack.frontendLabel"),
       icon: "web",
-      color: "text-blue-600 bg-blue-50 border-blue-100",
+      color: ACCENT,
       items: [
         { name: "React 18", note: "UI" },
         { name: "TypeScript", note: "strict" },
@@ -281,7 +529,7 @@ function TechStack() {
     {
       label: t("about.stack.dataLabel"),
       icon: "database",
-      color: "text-emerald-600 bg-emerald-50 border-emerald-100",
+      color: "#22d3a1",
       items: [
         { name: "Supabase Postgres", note: "database" },
         { name: "pgvector", note: "vector search" },
@@ -293,7 +541,7 @@ function TechStack() {
     {
       label: t("about.stack.infraLabel"),
       icon: "cloud",
-      color: "text-amber-600 bg-amber-50 border-amber-100",
+      color: ACCENT3,
       items: [
         { name: "AWS App Runner", note: "API host" },
         { name: "AWS Lambda", note: "worker" },
@@ -310,16 +558,51 @@ function TechStack() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
       {categories.map((cat) => (
-        <div key={cat.label} className="border border-zinc-100 rounded-2xl p-7 hover:border-zinc-200 hover:shadow-sm transition-all">
-          <div className={`w-9 h-9 rounded-xl border flex items-center justify-center mb-5 ${cat.color}`}>
-            <span className="material-symbols-outlined" style={{ fontSize: "17px" }}>{cat.icon}</span>
+        <div
+          key={cat.label}
+          className="cs-card"
+          style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 28 }}
+        >
+          <div
+            className="flex items-center justify-center"
+            style={{
+              width: 36, height: 36, borderRadius: 6,
+              background: `${cat.color}10`,
+              border: `1px solid ${cat.color}33`,
+              marginBottom: 18,
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 17, color: cat.color }}>
+              {cat.icon}
+            </span>
           </div>
-          <h3 className="text-xs font-semibold text-zinc-950 uppercase tracking-wider mb-4">{cat.label}</h3>
+          <h3
+            className="uppercase"
+            style={{
+              fontFamily: FONT_DISPLAY,
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: "2px",
+              color: TEXT,
+              marginBottom: 16,
+            }}
+          >
+            {cat.label}
+          </h3>
           <div className="flex flex-wrap gap-2">
             {cat.items.map((item) => (
-              <div key={item.name} className="flex items-center gap-1.5 bg-zinc-50 border border-zinc-100 rounded-full px-3 py-1.5">
-                <span className="text-xs font-semibold text-zinc-800">{item.name}</span>
-                <span className="text-[10px] font-mono text-zinc-400">{item.note}</span>
+              <div
+                key={item.name}
+                className="flex items-center gap-1.5"
+                style={{
+                  background: `${cat.color}0a`,
+                  border: `1px solid ${cat.color}22`,
+                  borderRadius: 3,
+                  padding: "4px 10px",
+                }}
+              >
+                <span style={{ fontSize: 12, fontWeight: 700, color: TEXT }}>{item.name}</span>
+                <span style={{ fontSize: 10, color: MUTED }}>{item.note}</span>
               </div>
             ))}
           </div>
@@ -341,29 +624,54 @@ function Pipeline() {
   ];
 
   const agents = [
-    { icon: "security",     label: "Security",     cls: "text-red-600    bg-red-50    border-red-100" },
-    { icon: "bug_report",   label: "Correctness",  cls: "text-blue-600   bg-blue-50   border-blue-100" },
-    { icon: "speed",        label: "Performance",  cls: "text-amber-600  bg-amber-50  border-amber-100" },
-    { icon: "architecture", label: "Style",        cls: "text-violet-600 bg-violet-50 border-violet-100" },
+    { icon: "security",     label: "Security",    color: "#ff5577" },
+    { icon: "bug_report",   label: "Correctness", color: ACCENT },
+    { icon: "speed",        label: "Performance", color: ACCENT3 },
+    { icon: "architecture", label: "Style",       color: ACCENT2 },
   ];
 
   return (
-    <div className="space-y-3">
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {/* Phase 1 */}
-      <div className="bg-white border border-zinc-200 rounded-2xl p-7 overflow-x-auto">
+      <div
+        style={{
+          background: CARD,
+          border: `1px solid ${BORDER}`,
+          borderRadius: 8,
+          padding: 28,
+          overflowX: "auto",
+        }}
+      >
         <PhaseLabel num="01">{t("about.pipeline.phase1Label")}</PhaseLabel>
-        <div className="flex items-start gap-2 min-w-max mt-6">
+        <div className="flex items-start gap-2 min-w-max" style={{ marginTop: 28 }}>
           {mainSteps.map((step, i) => (
             <div key={i} className="flex items-center gap-2">
-              <div className="flex flex-col items-center text-center w-28">
-                <div className="w-10 h-10 bg-zinc-950 rounded-xl flex items-center justify-center mb-3">
-                  <span className="material-symbols-outlined text-white" style={{ fontSize: "17px" }}>{step.icon}</span>
+              <div className="flex flex-col items-center text-center" style={{ width: 120 }}>
+                <div
+                  className="flex items-center justify-center"
+                  style={{
+                    width: 42, height: 42, borderRadius: 8,
+                    background: `${ACCENT}10`,
+                    border: `1px solid ${ACCENT}33`,
+                    marginBottom: 12,
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 18, color: ACCENT }}>
+                    {step.icon}
+                  </span>
                 </div>
-                <span className="text-xs font-semibold text-zinc-950 leading-tight">{step.label}</span>
-                <span className="text-[10px] font-mono text-zinc-400 mt-1 leading-tight">{step.sub}</span>
+                <span style={{ fontFamily: FONT_DISPLAY, fontSize: 13, fontWeight: 700, color: TEXT, lineHeight: 1.3 }}>
+                  {step.label}
+                </span>
+                <span style={{ fontSize: 10, color: MUTED, marginTop: 4, lineHeight: 1.4 }}>
+                  {step.sub}
+                </span>
               </div>
               {i < mainSteps.length - 1 && (
-                <span className="material-symbols-outlined text-zinc-300 flex-shrink-0" style={{ fontSize: "16px", marginTop: "-18px" }}>
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: 16, color: BORDER, marginTop: -28, flexShrink: 0 }}
+                >
                   arrow_forward
                 </span>
               )}
@@ -372,57 +680,93 @@ function Pipeline() {
         </div>
       </div>
 
-      {/* Phase 2: Fan-out */}
-      <div className="border-2 border-dashed border-zinc-200 rounded-2xl p-7 bg-white">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+      {/* Phase 2: fan-out */}
+      <div
+        style={{
+          background: CARD,
+          border: `2px dashed ${BORDER}`,
+          borderRadius: 8,
+          padding: 28,
+        }}
+      >
+        <div className="flex items-center justify-between flex-wrap gap-3" style={{ marginBottom: 22 }}>
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-zinc-400" style={{ fontSize: "18px" }}>account_tree</span>
-            <span className="text-sm font-semibold text-zinc-950">{t("about.pipeline.step6")}</span>
-            <span className="text-[10px] font-mono text-zinc-400">— {t("about.pipeline.step6Desc")}</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 18, color: ACCENT }}>
+              account_tree
+            </span>
+            <span style={{ fontFamily: FONT_DISPLAY, fontSize: 14, fontWeight: 700, color: TEXT }}>
+              {t("about.pipeline.step6")}
+            </span>
+            <span style={{ fontSize: 10, color: MUTED }}>— {t("about.pipeline.step6Desc")}</span>
           </div>
           <PhaseLabel num="02">{t("about.pipeline.phase2Label")}</PhaseLabel>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" style={{ marginBottom: 20 }}>
           {agents.map((a) => (
-            <div key={a.label} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border ${a.cls}`}>
-              <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>{a.icon}</span>
-              <span className="text-xs font-semibold">{a.label}</span>
+            <div
+              key={a.label}
+              className="flex items-center gap-2"
+              style={{
+                padding: "10px 14px",
+                borderRadius: 6,
+                background: `${a.color}0d`,
+                border: `1px solid ${a.color}33`,
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 15, color: a.color }}>
+                {a.icon}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: TEXT }}>{a.label}</span>
             </div>
           ))}
         </div>
-        <p className="text-xs text-zinc-400 leading-relaxed border-t border-zinc-100 pt-4">
+        <p
+          style={{
+            fontSize: 11,
+            color: MUTED,
+            lineHeight: 1.7,
+            borderTop: `1px solid ${BORDER_DIM}`,
+            paddingTop: 16,
+          }}
+        >
           {t("about.pipeline.fanoutDesc")}
         </p>
       </div>
 
-      {/* Phase 3: Output */}
-      <div className="bg-white border border-zinc-200 rounded-2xl p-7">
+      {/* Phase 3: output */}
+      <div
+        style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 28 }}
+      >
         <PhaseLabel num="03">{t("about.pipeline.phase3Label")}</PhaseLabel>
-        <div className="flex items-center gap-3 flex-wrap mt-6">
-          <div className="flex items-center gap-2.5 px-4 py-3 bg-zinc-950 text-white rounded-xl">
-            <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>merge</span>
-            <div>
-              <div className="text-xs font-semibold">{t("about.pipeline.step7")}</div>
-              <div className="text-[10px] font-mono text-zinc-400">{t("about.pipeline.step7Desc")}</div>
-            </div>
-          </div>
-          <span className="material-symbols-outlined text-zinc-300" style={{ fontSize: "16px" }}>arrow_forward</span>
-          <div className="flex items-center gap-2.5 px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-xl">
-            <span className="material-symbols-outlined text-emerald-600" style={{ fontSize: "15px" }}>fact_check</span>
-            <div>
-              <div className="text-xs font-semibold text-zinc-950">{t("about.pipeline.step8")}</div>
-              <div className="text-[10px] font-mono text-zinc-500">{t("about.pipeline.step8Desc")}</div>
-            </div>
-          </div>
-          <span className="text-zinc-300 font-mono select-none text-sm">+</span>
-          <div className="flex items-center gap-2.5 px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl">
-            <span className="material-symbols-outlined text-blue-600" style={{ fontSize: "15px" }}>database</span>
-            <div>
-              <div className="text-xs font-semibold text-zinc-950">{t("about.pipeline.step9")}</div>
-              <div className="text-[10px] font-mono text-zinc-500">{t("about.pipeline.step9Desc")}</div>
-            </div>
-          </div>
+        <div className="flex items-center gap-3 flex-wrap" style={{ marginTop: 24 }}>
+          <PipelineOutput icon="merge"       title={t("about.pipeline.step7")} sub={t("about.pipeline.step7Desc")} color={ACCENT}  />
+          <span className="material-symbols-outlined" style={{ fontSize: 16, color: BORDER }}>arrow_forward</span>
+          <PipelineOutput icon="fact_check"  title={t("about.pipeline.step8")} sub={t("about.pipeline.step8Desc")} color={ACCENT2} />
+          <span style={{ color: BORDER, fontFamily: FONT_MONO, userSelect: "none", fontSize: 14 }}>+</span>
+          <PipelineOutput icon="database"    title={t("about.pipeline.step9")} sub={t("about.pipeline.step9Desc")} color={ACCENT3} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function PipelineOutput({ icon, title, sub, color }: { icon: string; title: string; sub: string; color: string }) {
+  return (
+    <div
+      className="flex items-center gap-2.5"
+      style={{
+        padding: "12px 16px",
+        borderRadius: 6,
+        background: `${color}0d`,
+        border: `1px solid ${color}33`,
+      }}
+    >
+      <span className="material-symbols-outlined" style={{ fontSize: 16, color }}>
+        {icon}
+      </span>
+      <div>
+        <div style={{ fontFamily: FONT_DISPLAY, fontSize: 12, fontWeight: 700, color: TEXT }}>{title}</div>
+        <div style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{sub}</div>
       </div>
     </div>
   );
@@ -431,45 +775,89 @@ function Pipeline() {
 function PhaseLabel({ num, children }: { num: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-5 h-5 bg-zinc-950 text-white text-[9px] font-mono font-bold rounded-full flex items-center justify-center flex-shrink-0">
+      <span
+        className="flex items-center justify-center"
+        style={{
+          width: 22,
+          height: 22,
+          background: `${ACCENT}15`,
+          border: `1px solid ${ACCENT}55`,
+          borderRadius: "50%",
+          fontSize: 10,
+          fontWeight: 700,
+          color: ACCENT,
+          fontFamily: FONT_MONO,
+        }}
+      >
         {num}
       </span>
-      <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">{children}</span>
+      <span
+        className="uppercase"
+        style={{ fontSize: 10, letterSpacing: "2px", color: MUTED }}
+      >
+        {children}
+      </span>
     </div>
   );
 }
 
-type SpecialistColor = "red" | "blue" | "amber" | "violet";
-
-const specialistTheme: Record<SpecialistColor, { bar: string; icon: string; badge: string }> = {
-  red:    { bar: "bg-red-500",    icon: "text-red-600",    badge: "bg-red-50 border-red-100" },
-  blue:   { bar: "bg-blue-500",   icon: "text-blue-600",   badge: "bg-blue-50 border-blue-100" },
-  amber:  { bar: "bg-amber-500",  icon: "text-amber-600",  badge: "bg-amber-50 border-amber-100" },
-  violet: { bar: "bg-violet-500", icon: "text-violet-600", badge: "bg-violet-50 border-violet-100" },
-};
-
-function SpecialistCard({ icon, color, title, desc, examples }: {
-  icon: string; color: SpecialistColor; title: string; desc: string; examples: string[];
+function SpecialistCard({
+  icon,
+  accent,
+  title,
+  desc,
+  examples,
+}: {
+  icon: string;
+  accent: string;
+  title: string;
+  desc: string;
+  examples: string[];
 }) {
-  const cls = specialistTheme[color];
   return (
-    <div className="border border-zinc-100 rounded-2xl overflow-hidden hover:border-zinc-200 hover:shadow-sm transition-all">
-      <div className={`h-1 w-full ${cls.bar}`} />
-      <div className="p-7 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-9 h-9 rounded-xl border flex items-center justify-center ${cls.badge}`}>
-            <span className={`material-symbols-outlined ${cls.icon}`} style={{ fontSize: "17px" }}>{icon}</span>
+    <div
+      className="cs-card"
+      style={{
+        background: CARD,
+        border: `1px solid ${BORDER}`,
+        borderRadius: 8,
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ height: 2, background: `linear-gradient(90deg, ${accent}, ${accent}00)` }} />
+      <div style={{ padding: 28 }}>
+        <div className="flex items-center gap-3" style={{ marginBottom: 16 }}>
+          <div
+            className="flex items-center justify-center"
+            style={{
+              width: 40, height: 40, borderRadius: 8,
+              background: `${accent}10`,
+              border: `1px solid ${accent}33`,
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 19, color: accent }}>
+              {icon}
+            </span>
           </div>
-          <h3 className="font-bold text-zinc-950 tracking-tight">{title}</h3>
+          <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 700, color: TEXT }}>
+            {title}
+          </h3>
         </div>
-        <p className="text-sm text-zinc-500 leading-relaxed">{desc}</p>
-        <ul className="space-y-2 pt-3 border-t border-zinc-50">
+        <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.7, marginBottom: 18 }}>{desc}</p>
+        <ul style={{ listStyle: "none", paddingTop: 16, borderTop: `1px solid ${BORDER_DIM}` }}>
           {examples.map((ex, i) => (
-            <li key={i} className="flex items-start gap-2 text-xs text-zinc-600">
-              <span className="material-symbols-outlined text-zinc-300 flex-shrink-0 mt-0.5" style={{ fontSize: "12px" }}>
+            <li
+              key={i}
+              className="flex items-start gap-2"
+              style={{ fontSize: 12, color: TEXT, marginBottom: i < examples.length - 1 ? 10 : 0 }}
+            >
+              <span
+                className="material-symbols-outlined flex-shrink-0"
+                style={{ fontSize: 14, color: accent, marginTop: 1 }}
+              >
                 arrow_right
               </span>
-              {ex}
+              <span style={{ color: MUTED }}>{ex}</span>
             </li>
           ))}
         </ul>

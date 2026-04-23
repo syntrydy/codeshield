@@ -23,7 +23,6 @@ def _bootstrap_secrets() -> None:
 
     mapping = {
         "SUPABASE_SECRET_KEY":     f"{prefix}/supabase_service_role_key",
-        "SUPABASE_JWT_SECRET":     f"{prefix}/supabase_jwt_secret",
         "ANTHROPIC_API_KEY":       f"{prefix}/anthropic_api_key",
         "LANGSMITH_API_KEY":       f"{prefix}/langsmith_api_key",
         "GITHUB_APP_ID":           f"{prefix}/github_app_id",

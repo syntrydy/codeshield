@@ -77,6 +77,13 @@ resource "aws_lambda_function" "worker" {
   timeout     = 900
   memory_size = 2048
 
+  # The shared image's CMD runs uvicorn (for App Runner). Override here so
+  # Lambda boots via awslambdaric → handler, not via uvicorn.
+  image_config {
+    entry_point = ["/app/.venv/bin/python", "-m", "awslambdaric"]
+    command     = ["app.worker.lambda_handler.handler"]
+  }
+
   environment {
     variables = {
       TASK_BACKEND             = "sqs"

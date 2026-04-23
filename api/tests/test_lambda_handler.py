@@ -21,7 +21,6 @@ def _run_bootstrap(prefix: str = "code-review-prod") -> None:
 
 _EXPECTED_MAPPING = {
     "SUPABASE_SECRET_KEY": "supabase_service_role_key",
-    "SUPABASE_JWT_SECRET": "supabase_jwt_secret",
     "ANTHROPIC_API_KEY": "anthropic_api_key",
     "LANGSMITH_API_KEY": "langsmith_api_key",
     "GITHUB_APP_ID": "github_app_id",

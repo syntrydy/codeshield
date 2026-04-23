@@ -28,6 +28,8 @@ dependencies = [
     "redis==5.2.1",
     # AWS SDK (S3 + Secrets Manager)
     "boto3==1.38.6",
+    # AWS Lambda Runtime Interface Client — lets the same image run under Lambda
+    "awslambdaric>=2.2.0",
     # Jinja2 for Check Run summary templates
     "jinja2==3.1.6",
     # Structured logging

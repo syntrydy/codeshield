@@ -335,11 +335,11 @@
       "step8Desc": "inline annotations",
       "step9": "Supabase",
       "step9Desc": "findings · Realtime events",
-      "fanoutDesc": "The planner dispatches up to four specialists concurrently. Each runs an independent ReAct loop with up to 6 tool calls. A specialist failure never kills the run — it emits a failure event and returns an empty findings list so the aggregator keeps working."
+      "fanoutDesc": "The planner dispatches only the specialists enabled in the project's settings — anywhere from one to four — and runs them concurrently. Each is an independent ReAct loop with up to 6 tool calls. A specialist failure never kills the run: it emits a failure event and returns an empty findings list so the aggregator keeps working."
     },
     "specialists": {
       "title": "Specialist Agents",
-      "subtitle": "Each specialist is a ReAct agent with full tool access to the repository.",
+      "subtitle": "Four independent ReAct agents, each with full tool access to the repository. Enable any subset per project to match your review priorities.",
       "securityTitle": "Security",
       "securityDesc": "Identifies vulnerabilities, injection vectors, authentication flaws, and insecure cryptographic usage.",
       "securityEx1": "Unsanitized user input in ORM queries",
