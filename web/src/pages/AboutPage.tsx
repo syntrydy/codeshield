@@ -283,6 +283,26 @@ export function AboutPage() {
         <Pipeline />
       </Section>
 
+      {/* ── End-to-End Flow ── */}
+      <Section label={t("about.flow.title")} title={t("about.flow.subtitle")}>
+        <p
+          style={{
+            color: MUTED,
+            fontSize: 14,
+            lineHeight: 1.7,
+            maxWidth: 780,
+            marginTop: -24,
+            marginBottom: 48,
+          }}
+        >
+          {t("about.flow.description")}
+        </p>
+        <FlowLegend />
+        <div style={{ marginTop: 32 }}>
+          <FullFlowGraph />
+        </div>
+      </Section>
+
       {/* ── Specialist Agents ── */}
       <Section label={t("about.specialists.title")} title={t("about.specialists.subtitle")}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -863,5 +883,394 @@ function SpecialistCard({
         </ul>
       </div>
     </div>
+  );
+}
+
+/* ── End-to-End Flow graph ── */
+
+function FlowLegend() {
+  const { t } = useTranslation();
+  const items = [
+    { color: ACCENT,  label: t("about.flow.legendSync") },
+    { color: ACCENT2, label: t("about.flow.legendAsync") },
+    { color: ACCENT3, label: t("about.flow.legendExternal") },
+  ];
+  return (
+    <div className="flex flex-wrap" style={{ gap: 16 }}>
+      {items.map((it) => (
+        <div
+          key={it.label}
+          className="flex items-center"
+          style={{
+            gap: 8,
+            padding: "6px 12px",
+            borderRadius: 3,
+            background: `${it.color}0d`,
+            border: `1px solid ${it.color}33`,
+          }}
+        >
+          <span
+            style={{ width: 8, height: 8, borderRadius: "50%", background: it.color, display: "inline-block" }}
+          />
+          <span className="uppercase" style={{ fontSize: 10, letterSpacing: "1.5px", color: TEXT }}>
+            {it.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FlowNode({
+  icon,
+  title,
+  sub,
+  color = ACCENT,
+  width = 180,
+}: {
+  icon: string;
+  title: string;
+  sub?: string;
+  color?: string;
+  width?: number | string;
+}) {
+  return (
+    <div
+      className="flex items-start"
+      style={{
+        gap: 12,
+        padding: "14px 16px",
+        borderRadius: 8,
+        background: CARD,
+        border: `1px solid ${color}44`,
+        width,
+        maxWidth: "100%",
+      }}
+    >
+      <div
+        className="flex items-center justify-center flex-shrink-0"
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 6,
+          background: `${color}10`,
+          border: `1px solid ${color}33`,
+        }}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 16, color }}>
+          {icon}
+        </span>
+      </div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontFamily: FONT_DISPLAY, fontSize: 13, fontWeight: 700, color: TEXT, lineHeight: 1.2 }}>
+          {title}
+        </div>
+        {sub && (
+          <div style={{ fontSize: 10, color: MUTED, marginTop: 4, lineHeight: 1.4 }}>{sub}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FlowNote({ color = MUTED, children }: { color?: string; children: React.ReactNode }) {
+  return (
+    <div
+      className="uppercase"
+      style={{
+        fontSize: 10,
+        letterSpacing: "1.5px",
+        color,
+        background: `${color}12`,
+        border: `1px dashed ${color}44`,
+        borderRadius: 3,
+        padding: "4px 10px",
+        textAlign: "center",
+        fontFamily: FONT_MONO,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function FlowArrowDown({ color = ACCENT, label }: { color?: string; label?: string }) {
+  return (
+    <div className="flex flex-col items-center" style={{ gap: 4, padding: "4px 0" }}>
+      <div style={{ width: 1, height: 18, background: `${color}66` }} />
+      {label && (
+        <span className="uppercase" style={{ fontSize: 9, letterSpacing: "1.5px", color: MUTED }}>
+          {label}
+        </span>
+      )}
+      <span
+        className="material-symbols-outlined"
+        style={{ fontSize: 18, color, marginTop: label ? -2 : 0 }}
+      >
+        arrow_downward
+      </span>
+    </div>
+  );
+}
+
+function FanoutFigure() {
+  const agents = [
+    { icon: "security",     label: "Security",    color: "#ff5577" },
+    { icon: "bug_report",   label: "Correctness", color: ACCENT },
+    { icon: "speed",        label: "Performance", color: ACCENT3 },
+    { icon: "architecture", label: "Style",       color: ACCENT2 },
+  ];
+  return (
+    <div
+      style={{
+        position: "relative",
+        background: CARD,
+        border: `2px dashed ${BORDER}`,
+        borderRadius: 8,
+        padding: "22px 20px 20px",
+      }}
+    >
+      {/* Thin SVG overlay for fan-out + merge lines only */}
+      <svg
+        viewBox="0 0 400 120"
+        preserveAspectRatio="none"
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          pointerEvents: "none",
+        }}
+        aria-hidden="true"
+      >
+        {/* Fan-out from top center to 4 column centers */}
+        {[50, 150, 250, 350].map((x) => (
+          <line
+            key={`out-${x}`}
+            x1={200}
+            y1={0}
+            x2={x}
+            y2={42}
+            stroke={`${ACCENT}55`}
+            strokeWidth="1"
+          />
+        ))}
+        {/* Merge from 4 column centers to bottom center */}
+        {[50, 150, 250, 350].map((x) => (
+          <line
+            key={`in-${x}`}
+            x1={x}
+            y1={78}
+            x2={200}
+            y2={120}
+            stroke={`${ACCENT}55`}
+            strokeWidth="1"
+          />
+        ))}
+      </svg>
+
+      <div className="flex items-center justify-center" style={{ marginBottom: 14, position: "relative" }}>
+        <FlowNote color={ACCENT}>Send × enabled specialists</FlowNote>
+      </div>
+      <div
+        className="grid grid-cols-2 sm:grid-cols-4"
+        style={{ gap: 10, position: "relative" }}
+      >
+        {agents.map((a) => (
+          <div
+            key={a.label}
+            className="flex flex-col items-center text-center"
+            style={{
+              padding: "14px 10px",
+              borderRadius: 6,
+              background: `${a.color}0d`,
+              border: `1px solid ${a.color}44`,
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 18, color: a.color }}>
+              {a.icon}
+            </span>
+            <div
+              style={{
+                fontFamily: FONT_DISPLAY,
+                fontSize: 12,
+                fontWeight: 700,
+                color: TEXT,
+                marginTop: 6,
+              }}
+            >
+              {a.label}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-center" style={{ marginTop: 14, position: "relative" }}>
+        <FlowNote color={ACCENT}>ReAct · ≤ 6 tool rounds · Anthropic + GitHub tools</FlowNote>
+      </div>
+    </div>
+  );
+}
+
+function FullFlowGraph() {
+  const { t } = useTranslation();
+  return (
+    <div
+      style={{
+        background: SURFACE,
+        border: `1px solid ${BORDER}`,
+        borderRadius: 12,
+        padding: 28,
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+      }}
+    >
+      {/* 1. Trigger */}
+      <div className="flex items-stretch" style={{ gap: 12, flexWrap: "wrap" }}>
+        <FlowNode icon="person"    title="Developer"  sub="opens / updates a PR" color={MUTED} width={220} />
+        <div className="flex items-center" style={{ color: BORDER }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>
+        </div>
+        <FlowNode icon="commit"    title="GitHub PR"  sub="repository event" color={MUTED} width={220} />
+        <div className="flex items-center" style={{ color: BORDER }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>
+        </div>
+        <FlowNode icon="http"      title="Webhook"    sub={t("about.flow.noteHmac")} color={ACCENT} width={260} />
+      </div>
+
+      <FlowArrowDown color={ACCENT} />
+
+      {/* 2. Ingress */}
+      <FlowNode icon="dns" title="App Runner — FastAPI" sub="verify HMAC → idempotency → insert run → dispatch" color={ACCENT} width="100%" />
+
+      <div
+        className="grid grid-cols-1 md:grid-cols-3"
+        style={{ gap: 10, marginTop: 6 }}
+      >
+        <div className="flex flex-col items-center" style={{ gap: 6 }}>
+          <FlowArrowDown color={ACCENT2} label={t("about.flow.noteIdem")} />
+          <FlowNode icon="database"  title="DynamoDB cache" sub="install tokens · idempotency" color={ACCENT2} width="100%" />
+        </div>
+        <div className="flex flex-col items-center" style={{ gap: 6 }}>
+          <FlowArrowDown color={ACCENT} label="insert run row" />
+          <FlowNode icon="storage"   title="Supabase"       sub="runs table" color={ACCENT} width="100%" />
+        </div>
+        <div className="flex flex-col items-center" style={{ gap: 6 }}>
+          <FlowArrowDown color={ACCENT2} label={t("about.flow.noteDispatch")} />
+          <FlowNode icon="queue"     title="SQS"            sub="durable, 960 s visibility" color={ACCENT2} width="100%" />
+        </div>
+      </div>
+
+      <FlowArrowDown color={ACCENT2} label="SQS trigger" />
+
+      {/* 3. Lambda worker */}
+      <div className="flex items-stretch" style={{ gap: 12, flexWrap: "wrap" }}>
+        <FlowNode
+          icon="functions"
+          title="Lambda worker"
+          sub={t("about.flow.noteBootstrap")}
+          color={ACCENT}
+          width={340}
+        />
+        <div className="flex items-center" style={{ color: BORDER }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>
+        </div>
+        <FlowNode
+          icon="key"
+          title="Secrets Manager"
+          sub="GitHub PEM · Anthropic · LangSmith"
+          color={ACCENT3}
+          width={320}
+        />
+      </div>
+
+      <FlowArrowDown color={ACCENT} label="invoke compiled_graph" />
+
+      {/* 4. LangGraph */}
+      <FlowNode
+        icon="hub"
+        title="Planner"
+        sub="pulls prompt from LangSmith Hub · classifies PR · produces plan"
+        color={ACCENT}
+        width="100%"
+      />
+
+      <FlowArrowDown color={ACCENT} label={t("about.flow.noteFanout")} />
+
+      <FanoutFigure />
+
+      <FlowArrowDown color={ACCENT} label="merged findings" />
+
+      <FlowNode
+        icon="merge"
+        title="Aggregator"
+        sub={t("about.flow.noteAggregate")}
+        color={ACCENT}
+        width="100%"
+      />
+
+      {/* External services annotation band */}
+      <div
+        className="flex flex-wrap items-center"
+        style={{
+          gap: 10,
+          marginTop: 4,
+          padding: "10px 14px",
+          background: `${ACCENT3}0a`,
+          border: `1px dashed ${ACCENT3}44`,
+          borderRadius: 6,
+        }}
+      >
+        <span className="uppercase" style={{ fontSize: 10, letterSpacing: "1.5px", color: ACCENT3, fontFamily: FONT_MONO }}>
+          specialists call
+        </span>
+        <ExternalChip icon="psychology" label="Anthropic Claude" />
+        <ExternalChip icon="code" label="GitHub REST API" />
+        <ExternalChip icon="visibility" label="LangSmith traces" />
+      </div>
+
+      <FlowArrowDown color={ACCENT} />
+
+      {/* 5. Write-back */}
+      <div
+        className="grid grid-cols-1 md:grid-cols-3"
+        style={{ gap: 10 }}
+      >
+        <FlowNode icon="list_alt"   title="findings table"   sub="Supabase insert (service role)" color={ACCENT} width="100%" />
+        <FlowNode icon="fact_check" title="GitHub Check Run" sub={t("about.flow.noteAnnotate")}  color={ACCENT} width="100%" />
+        <FlowNode icon="bolt"       title="run_events"       sub="specialist.completed · run.completed" color={ACCENT} width="100%" />
+      </div>
+
+      <FlowArrowDown color={ACCENT2} label={t("about.flow.noteRealtime")} />
+
+      {/* 6. Live display */}
+      <FlowNode
+        icon="dashboard"
+        title="React dashboard"
+        sub="TanStack Query fetch + Supabase Realtime postgres_changes"
+        color={ACCENT}
+        width="100%"
+      />
+    </div>
+  );
+}
+
+function ExternalChip({ icon, label }: { icon: string; label: string }) {
+  return (
+    <span
+      className="inline-flex items-center"
+      style={{
+        gap: 6,
+        padding: "4px 10px",
+        borderRadius: 3,
+        background: CARD,
+        border: `1px solid ${ACCENT3}44`,
+      }}
+    >
+      <span className="material-symbols-outlined" style={{ fontSize: 14, color: ACCENT3 }}>
+        {icon}
+      </span>
+      <span style={{ fontSize: 11, color: TEXT, fontWeight: 700 }}>{label}</span>
+    </span>
   );
 }

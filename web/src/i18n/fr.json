@@ -337,6 +337,23 @@
       "step9Desc": "résultats · événements Realtime",
       "fanoutDesc": "Le planner ne dispatche que les spécialistes activés dans les paramètres du projet — d'un à quatre — et les exécute en parallèle. Chacun est une boucle ReAct indépendante avec jusqu'à 6 appels d'outils. Une panne de spécialiste ne tue jamais le run : elle émet un événement d'échec et retourne une liste vide pour que l'agrégateur continue."
     },
+    "flow": {
+      "title": "Flux de bout en bout",
+      "subtitle": "Comment une pull request devient une review.",
+      "description": "Quand un développeur ouvre ou met à jour une pull request, sept systèmes coopèrent pendant environ une minute pour produire la review finale. Voici le chemin complet — de la réception du webhook aux findings affichés en direct dans le dashboard.",
+      "legendSync": "synchrone",
+      "legendAsync": "asynchrone",
+      "legendExternal": "service externe",
+      "noteHmac": "HMAC vérifié, 2xx en ≤ 10 s",
+      "noteIdem": "dédup via X-GitHub-Delivery dans DynamoDB",
+      "noteDispatch": "message SQS avec run_id",
+      "noteBootstrap": "secrets chargés depuis Secrets Manager au cold start",
+      "noteFanout": "Send × spécialistes activés",
+      "noteReact": "boucle ReAct · ≤ 6 appels d'outils",
+      "noteAggregate": "dédup + verdict + filtre de sévérité",
+      "noteAnnotate": "annotations inline sur la PR",
+      "noteRealtime": "postgres_changes streamés vers le navigateur"
+    },
     "specialists": {
       "title": "Agents Spécialistes",
       "subtitle": "Quatre agents ReAct indépendants, chacun avec un accès complet aux outils du repository. Activez n'importe quel sous-ensemble par projet selon vos priorités de review.",

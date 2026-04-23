@@ -337,6 +337,23 @@
       "step9Desc": "findings · Realtime events",
       "fanoutDesc": "The planner dispatches only the specialists enabled in the project's settings — anywhere from one to four — and runs them concurrently. Each is an independent ReAct loop with up to 6 tool calls. A specialist failure never kills the run: it emits a failure event and returns an empty findings list so the aggregator keeps working."
     },
+    "flow": {
+      "title": "End-to-end flow",
+      "subtitle": "How a pull request becomes a review.",
+      "description": "When a developer opens or updates a pull request, seven systems cooperate over roughly a minute to produce the final review. This is the full path — from webhook receipt to live findings in the dashboard.",
+      "legendSync": "synchronous",
+      "legendAsync": "asynchronous",
+      "legendExternal": "external service",
+      "noteHmac": "HMAC-verified, ≤ 10 s to 2xx",
+      "noteIdem": "X-GitHub-Delivery dedup in DynamoDB",
+      "noteDispatch": "SQS message with run_id",
+      "noteBootstrap": "secrets loaded from Secrets Manager on cold start",
+      "noteFanout": "Send × enabled specialists",
+      "noteReact": "ReAct loop · ≤ 6 tool rounds",
+      "noteAggregate": "dedup + verdict + severity filter",
+      "noteAnnotate": "inline annotations on the PR",
+      "noteRealtime": "postgres_changes streamed to browser"
+    },
     "specialists": {
       "title": "Specialist Agents",
       "subtitle": "Four independent ReAct agents, each with full tool access to the repository. Enable any subset per project to match your review priorities.",
