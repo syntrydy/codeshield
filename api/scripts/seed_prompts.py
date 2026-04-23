@@ -51,6 +51,10 @@ def main() -> None:
             url = client.push_prompt(prompt_id, object=prompt)
             print(f"ok → {url}")
         except Exception as exc:
+            # "Nothing to commit" means the prompt is already up to date — skip.
+            if "Nothing to commit" in str(exc) or "has not changed" in str(exc):
+                print("unchanged, skipped")
+                continue
             print(f"FAILED: {exc}")
             sys.exit(1)
 

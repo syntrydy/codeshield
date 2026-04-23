@@ -20,7 +20,7 @@ from app.graph.tools import ALL_TOOLS, set_github_context
 
 logger = logging.getLogger(__name__)
 
-_MAX_TOOL_ITERATIONS = 4
+_MAX_TOOL_ITERATIONS = 6
 
 
 def _get_llm() -> BaseChatModel:
@@ -206,15 +206,39 @@ def _run_specialist(specialist_name: str, state: ReviewState) -> dict[str, Any]:
     for f in findings:
         f.setdefault("specialist", specialist_name)
 
+    duration_ms = round((time.perf_counter() - _t0) * 1000)
+
     logger.info(
         "Specialist complete",
         extra={
             "run_id": state["run_id"],
             "specialist": specialist_name,
             "findings_count": len(findings),
-            "duration_ms": round((time.perf_counter() - _t0) * 1000),
+            "duration_ms": duration_ms,
         },
     )
+
+    # Emit a per-specialist completion event so the DB has per-specialist
+    # observability without needing a LangSmith trace to diagnose empty runs.
+    try:
+        from app.core.supabase import get_service_client
+        get_service_client().table("run_events").insert({
+            "run_id": state["run_id"],
+            "event_type": "specialist.completed",
+            "payload": {
+                "specialist": specialist_name,
+                "findings_count": len(findings),
+                "duration_ms": duration_ms,
+                "input_tokens": total_in,
+                "output_tokens": total_out,
+            },
+        }).execute()
+    except Exception as exc:
+        logger.warning(
+            "Failed to emit specialist.completed event",
+            extra={"run_id": state["run_id"], "specialist": specialist_name, "error": str(exc)},
+        )
+
     return {
         "findings": findings,
         "specialist_errors": [],

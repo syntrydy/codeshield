@@ -78,10 +78,9 @@ Locale: {locale}
 
 ## Process
 
-Use the available tools to read file contents and diffs. For each issue found:
+Use the available tools to read file contents and diffs. For each issue you suspect:
 1. Confirm the vulnerability by reading the relevant lines.
-2. Check whether the calling code or tests mitigate it before reporting.
-3. Emit a finding only if the risk is real and unmitigated.
+2. Describe what inputs or conditions would make it exploitable.
 
 Maximum 6 tool-call iterations. Emit findings with whatever evidence you have collected.
 
@@ -312,7 +311,7 @@ After your tool calls, output a JSON array of findings (empty array if none):
 [
   {{
     "specialist": "style",
-    "severity": "low|info",
+    "severity": "critical|high|medium|low|info",
     "file_path": "<path or null>",
     "line_start": <int or null>,
     "line_end": <int or null>,
