@@ -26,6 +26,7 @@ def _bootstrap_secrets() -> None:
         "ANTHROPIC_API_KEY":       f"{prefix}/anthropic_api_key",
         "LANGSMITH_API_KEY":       f"{prefix}/langsmith_api_key",
         "GITHUB_APP_ID":           f"{prefix}/github_app_id",
+        "GITHUB_APP_SLUG":         f"{prefix}/github_app_slug",
         "GITHUB_PRIVATE_KEY":      f"{prefix}/github_private_key",
         "GITHUB_WEBHOOK_SECRET":   f"{prefix}/github_webhook_secret",
     }

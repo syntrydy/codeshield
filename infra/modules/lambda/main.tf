@@ -92,6 +92,10 @@ resource "aws_lambda_function" "worker" {
       SUPABASE_URL             = var.supabase_url
       SUPABASE_PUBLISHABLE_KEY = var.supabase_anon_key
       CACHE_TABLE_NAME         = var.cache_table_name
+      ENVIRONMENT              = "production"
+      LANGCHAIN_TRACING_V2     = "true"
+      LANGSMITH_PROJECT        = "CodeShieldDev"
+      LANGSMITH_ENDPOINT       = "https://eu.api.smith.langchain.com"
     }
   }
 

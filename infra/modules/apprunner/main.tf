@@ -100,6 +100,9 @@ resource "aws_apprunner_service" "api" {
           AWS_DEFAULT_REGION       = var.aws_region
           ENVIRONMENT              = "production"
           CORS_ORIGINS             = "[\"https://${var.cloudfront_domain}\"]"
+          LANGCHAIN_TRACING_V2     = "true"
+          LANGSMITH_PROJECT        = "CodeShieldDev"
+          LANGSMITH_ENDPOINT       = "https://eu.api.smith.langchain.com"
         }
 
         runtime_environment_secrets = {

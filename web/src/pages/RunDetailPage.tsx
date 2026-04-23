@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -191,11 +192,32 @@ function MetaChip({ label, value, mono }: { label: string; value: string; mono?:
 }
 
 function FindingCard({ finding: f, t }: { finding: Finding; t: TFunction }) {
+  const [open, setOpen] = useState(false);
   const sev = SEVERITY_STYLE[f.severity] ?? SEVERITY_STYLE.info;
+  const bodyId = `finding-body-${f.id}`;
+  const hasBody = Boolean(f.file_path || f.explanation || f.suggested_fix || f.confidence);
+
   return (
-    <div className="bg-white border border-zinc-200 rounded-lg p-5 space-y-3">
-      <div className="flex items-start justify-between gap-4">
-        <p className="text-sm font-semibold text-zinc-950">{f.title}</p>
+    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls={bodyId}
+        disabled={!hasBody}
+        className="w-full flex items-start justify-between gap-4 p-5 text-left hover:bg-zinc-50 transition-colors disabled:cursor-default disabled:hover:bg-transparent"
+      >
+        <div className="flex items-start gap-2 min-w-0">
+          {hasBody && (
+            <span
+              className={`material-symbols-outlined text-[18px] text-zinc-400 mt-0.5 transition-transform ${open ? "rotate-90" : ""}`}
+              aria-hidden="true"
+            >
+              chevron_right
+            </span>
+          )}
+          <p className="text-sm font-semibold text-zinc-950 leading-snug">{f.title}</p>
+        </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <span
             className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full border ${sev}`}
@@ -207,27 +229,35 @@ function FindingCard({ finding: f, t }: { finding: Finding; t: TFunction }) {
             {f.specialist}
           </span>
         </div>
-      </div>
+      </button>
 
-      {f.file_path && (
-        <p className="text-xs font-mono text-zinc-500 bg-zinc-50 border border-zinc-100 rounded px-2.5 py-1.5 w-fit">
-          {f.file_path}
-          {f.line_start != null && `:${f.line_start}`}
-          {f.line_end != null && f.line_end !== f.line_start && `–${f.line_end}`}
-        </p>
+      {open && hasBody && (
+        <div id={bodyId} className="px-5 pb-5 pt-0 space-y-3 border-t border-zinc-100">
+          {f.file_path && (
+            <p className="text-xs font-mono text-zinc-500 bg-zinc-50 border border-zinc-100 rounded px-2.5 py-1.5 w-fit mt-3">
+              {f.file_path}
+              {f.line_start != null && `:${f.line_start}`}
+              {f.line_end != null && f.line_end !== f.line_start && `–${f.line_end}`}
+            </p>
+          )}
+
+          {f.explanation && (
+            <p className="text-sm text-zinc-600 leading-relaxed">{f.explanation}</p>
+          )}
+
+          {f.suggested_fix && (
+            <pre className="rounded-lg bg-zinc-50 border border-zinc-100 px-4 py-3 text-xs text-zinc-600 overflow-x-auto leading-relaxed">
+              {f.suggested_fix}
+            </pre>
+          )}
+
+          {f.confidence && (
+            <p className="text-xs text-zinc-400">
+              {t("runDetail.confidence")}: <span className="font-medium text-zinc-500">{f.confidence}</span>
+            </p>
+          )}
+        </div>
       )}
-
-      <p className="text-sm text-zinc-600 leading-relaxed">{f.explanation}</p>
-
-      {f.suggested_fix && (
-        <pre className="rounded-lg bg-zinc-50 border border-zinc-100 px-4 py-3 text-xs text-zinc-600 overflow-x-auto leading-relaxed">
-          {f.suggested_fix}
-        </pre>
-      )}
-
-      <p className="text-xs text-zinc-400">
-        {t("runDetail.confidence")}: <span className="font-medium text-zinc-500">{f.confidence}</span>
-      </p>
     </div>
   );
 }
