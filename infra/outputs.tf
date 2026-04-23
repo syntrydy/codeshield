@@ -23,6 +23,11 @@ output "apprunner_service_id" {
   value       = module.apprunner.service_id
 }
 
+output "apprunner_service_arn" {
+  description = "App Runner service ARN (needed by CodeBuild build-deploy to call start-deployment)"
+  value       = module.apprunner.service_arn
+}
+
 output "artifacts_bucket" {
   description = "S3 bucket for PR diff artifacts"
   value       = module.s3.artifacts_bucket_name
@@ -41,4 +46,31 @@ output "cloudfront_distribution_id" {
 output "frontend_bucket" {
   description = "S3 bucket that holds the built frontend assets"
   value       = module.cloudfront.frontend_bucket_name
+}
+
+# ── CI/CD ──────────────────────────────────────────────────────────────────────
+
+output "codestar_connection_arn" {
+  description = "GitHub CodeStar connection ARN — needs one-time approval in the AWS console before CodeBuild can pull from GitHub"
+  value       = aws_codestarconnections_connection.github.arn
+}
+
+output "codebuild_test_project" {
+  description = "CodeBuild project name for the test pipeline"
+  value       = module.codebuild.test_project_name
+}
+
+output "codebuild_build_deploy_project" {
+  description = "CodeBuild project name for build + deploy"
+  value       = module.codebuild.build_deploy_project_name
+}
+
+output "codebuild_terraform_project" {
+  description = "CodeBuild project name for terraform plan/apply"
+  value       = module.codebuild.terraform_project_name
+}
+
+output "codebuild_eval_nightly_project" {
+  description = "CodeBuild project name for the nightly eval (scheduled by CloudWatch Events)"
+  value       = module.codebuild.eval_nightly_project_name
 }

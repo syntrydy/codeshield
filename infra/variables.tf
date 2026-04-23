@@ -32,6 +32,34 @@ variable "supabase_anon_key" {
   type        = string
 }
 
+# ── CI/CD (CodeBuild) ──────────────────────────────────────────────────────────
+
+variable "github_repo_url" {
+  description = "Full GitHub repo URL that CodeBuild projects clone from (e.g. https://github.com/syntrydy/codeshield.git)"
+  type        = string
+}
+
+variable "github_app_slug" {
+  description = "GitHub App slug — injected into the frontend bundle as VITE_GITHUB_APP_SLUG during build-deploy"
+  type        = string
+}
+
+variable "tf_state_bucket" {
+  description = "S3 bucket name used for Terraform remote state — passed into the terraform CodeBuild project"
+  type        = string
+}
+
+variable "tf_state_key" {
+  description = "S3 object key used for Terraform state (e.g. codeshield/prod/terraform.tfstate)"
+  type        = string
+  default     = "codeshield/prod/terraform.tfstate"
+}
+
+variable "tf_lock_table" {
+  description = "DynamoDB table name used for Terraform state locking"
+  type        = string
+}
+
 # ── CloudFront frontend ────────────────────────────────────────────────────────
 
 variable "cloudfront_certificate_arn" {

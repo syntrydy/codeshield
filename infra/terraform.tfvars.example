@@ -5,6 +5,15 @@
 supabase_url      = "https://YOUR_PROJECT_REF.supabase.co"
 supabase_anon_key = "YOUR_SUPABASE_ANON_KEY"
 
+# ── CI/CD (CodeBuild) ─────────────────────────────────────────────────────────
+# Full GitHub repo URL that CodeBuild projects will clone.
+github_repo_url = "https://github.com/YOUR_ORG/YOUR_REPO.git"
+# GitHub App slug — used as VITE_GITHUB_APP_SLUG in frontend build-deploy.
+github_app_slug = "your-github-app-slug"
+# Terraform state backend (same values passed to 'make infra-init' via -backend-config).
+tf_state_bucket = "codeshield-tf-state"
+tf_lock_table   = "codeshield-tf-locks"
+
 # Optional: custom domain for the React frontend via CloudFront.
 # Requires an ACM certificate in us-east-1. Omit to use the auto-assigned
 # cloudfront.net domain printed by 'terraform output cloudfront_domain'.
