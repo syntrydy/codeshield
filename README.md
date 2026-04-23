@@ -17,7 +17,7 @@ A developer installs the GitHub App on a repository. Every opened or updated pul
 | LLM + observability | OpenAI `gpt-4o` (primary) + Anthropic Claude Sonnet 4.5 (optional fallback), LangSmith |
 | Infrastructure | AWS App Runner (API), SQS, Lambda (worker), ElastiCache Serverless (token cache), CloudFront + S3 (frontend), ECR, Secrets Manager |
 | IaC | Terraform |
-| CI/CD | AWS CodeBuild |
+| CI/CD | AWS CodeBuild (4 projects: test, build-deploy, terraform, eval-nightly) |
 
 For the full architecture, data model, agent design, and v2 roadmap, see [DESIGN.md](./DESIGN.md).
 
@@ -112,15 +112,20 @@ Point the webhook URL in your GitHub App settings to your smee.io channel.
 
 ## CI/CD
 
-Three AWS CodeBuild projects, triggered by GitHub webhooks:
+Four AWS CodeBuild projects in `us-east-1`, provisioned by `infra/modules/codebuild/`:
 
 | Project | Trigger | Action |
 |---|---|---|
-| `test` | Any push or PR | `ruff` + `mypy` + `pytest` + fast eval |
-| `build-deploy` | Push to `main` | Build Docker image → ECR → Lambda update + App Runner deploy + CloudFront sync |
-| `terraform` | Push to `main` affecting `infra/**` | `terraform plan` on PRs, `terraform apply` on main |
+| `code-review-prod-test` | Any push or PR | `ruff` + `pytest` + `pnpm build` |
+| `code-review-prod-build-deploy` | Push to `main` | Build API image → ECR, update Lambda + App Runner, sync frontend to S3, invalidate CloudFront, smoke-test `/health` |
+| `code-review-prod-terraform` | Push/PR affecting `infra/**` | `terraform plan` on PRs, `terraform apply -auto-approve` on main |
+| `code-review-prod-eval-nightly` | CloudWatch schedule (02:00 UTC daily) | Full eval suite, posts results to LangSmith |
 
-Buildspecs are in `buildspec/`. Required CodeBuild environment variables are documented at the top of each file.
+All projects share one IAM role with `AdministratorAccess` (the terraform project needs broad perms; the others ride along). GitHub integration uses an `aws_codestarconnections_connection` that must be approved once in the AWS console after `terraform apply`.
+
+Buildspecs live in `buildspec/`. CodeBuild does not reset the working directory between phases — commands use `$CODEBUILD_SRC_DIR` to stay portable.
+
+**Temporarily dropped from CI** (tech debt): `mypy app` (pre-existing errors), `pnpm lint` (~59 `t('key')` violations), fast eval in `test.yml` (`evals/run.py` builds a `ReviewState` missing fields added during the LLM swap).
 
 ---
 
