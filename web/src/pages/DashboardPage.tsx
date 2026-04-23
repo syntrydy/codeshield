@@ -390,14 +390,7 @@ function InstallScreen({ installUrl }: { installUrl: string }) {
       <div className="max-w-2xl w-full text-center space-y-8">
 
         <div className="flex justify-center">
-          <div className="w-16 h-16 bg-zinc-950 rounded-2xl flex items-center justify-center shadow-lg">
-            <span
-              className="material-symbols-outlined text-white text-3xl"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              shield
-            </span>
-          </div>
+          <img src="/logo.jpg" alt="CodeShield" className="h-20 w-auto" />
         </div>
 
         <div className="space-y-3">
