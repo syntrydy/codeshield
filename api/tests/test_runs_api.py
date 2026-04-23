@@ -60,7 +60,7 @@ def anyio_backend() -> str:
 
 def _make_chain(data: object) -> MagicMock:
     chain = MagicMock()
-    for method in ("select", "eq", "order", "limit", "range", "maybe_single"):
+    for method in ("select", "eq", "order", "limit", "range", "maybe_single", "delete"):
         getattr(chain, method).return_value = chain
     chain.execute.return_value = MagicMock(data=data)
     return chain
@@ -124,6 +124,32 @@ async def test_get_run_not_found_returns_404() -> None:
     with patch("app.api.runs.get_service_client", return_value=fake_client):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get(
+                "/runs/00000000-0000-0000-0000-000000000000",
+                headers={"Authorization": f"Bearer {_make_token()}"},
+            )
+    assert resp.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_delete_run_returns_204() -> None:
+    fake_client = MagicMock()
+    fake_client.table.return_value = _make_chain(data=[{"id": _RUN_ID}])
+    with patch("app.api.runs.get_service_client", return_value=fake_client):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.delete(
+                f"/runs/{_RUN_ID}",
+                headers={"Authorization": f"Bearer {_make_token()}"},
+            )
+    assert resp.status_code == 204
+
+
+@pytest.mark.anyio
+async def test_delete_run_not_found_returns_404() -> None:
+    fake_client = MagicMock()
+    fake_client.table.return_value = _make_chain(data=[])
+    with patch("app.api.runs.get_service_client", return_value=fake_client):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.delete(
                 "/runs/00000000-0000-0000-0000-000000000000",
                 headers={"Authorization": f"Bearer {_make_token()}"},
             )

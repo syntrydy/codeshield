@@ -18,6 +18,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     const body = await res.text();
     throw new Error(`API ${res.status}: ${body}`);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -95,6 +96,9 @@ export const fetchRuns = (
 export { PAGE_SIZE };
 
 export const fetchRun = (runId: string): Promise<RunDetail> => apiFetch(`/runs/${runId}`);
+
+export const deleteRun = (runId: string): Promise<void> =>
+  apiFetch(`/runs/${runId}`, { method: "DELETE" });
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 

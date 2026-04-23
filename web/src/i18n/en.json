@@ -185,7 +185,16 @@
   "common": {
     "loading": "Loading…",
     "error": "Something went wrong.",
-    "back": "Back"
+    "back": "Back",
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "runDelete": {
+    "trigger": "Delete",
+    "title": "Delete this run?",
+    "description": "This will permanently delete the run for PR #{{pr}}, along with all findings and events. This cannot be undone.",
+    "confirm": "Delete run",
+    "deleting": "Deleting…"
   },
   "landing": {
     "navHowItWorks": "How it works",

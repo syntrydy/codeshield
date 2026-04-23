@@ -129,3 +129,18 @@ def get_run(run_id: UUID, user_id: str = Depends(current_user_id)) -> dict:  # t
         "findings": findings_resp.data,
         "events": events_resp.data,
     }
+
+
+@router.delete("/runs/{run_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_run(run_id: UUID, user_id: str = Depends(current_user_id)) -> None:
+    """Remove a run; findings and run_events cascade via FK on delete."""
+    client = get_service_client()
+    resp = (
+        client.table("runs")
+        .delete()
+        .eq("id", str(run_id))
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not resp.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")

@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { fetchRun, type RunDetail, type Finding, type RunEvent } from "../lib/api";
 import { useRunEvents } from "../hooks/useRunEvents";
 import { AppLayout } from "../components/AppLayout";
+import { DeleteRunDialog } from "../components/DeleteRunDialog";
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; dot?: string }> = {
   completed: { label: "Completed", cls: "bg-emerald-50 text-emerald-700 border-emerald-100" },
@@ -35,6 +36,7 @@ function duration(run: RunDetail): string {
 export function RunDetailPage() {
   const { runId } = useParams<{ runId: string }>();
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const { data: run, isLoading, isError } = useQuery({
     queryKey: ["runs", runId],
@@ -84,8 +86,8 @@ export function RunDetailPage() {
     >
       <main className="p-8 w-full space-y-6">
 
-        {/* Back link */}
-        <div>
+        {/* Back link + actions */}
+        <div className="flex items-center justify-between gap-4">
           <Link
             to={`/runs?project=${run.project_id}`}
             className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-950 transition-colors"
@@ -93,6 +95,20 @@ export function RunDetailPage() {
             <span className="material-symbols-outlined text-[14px]">arrow_back</span>
             {t("common.back")}
           </Link>
+          <DeleteRunDialog
+            runId={run.id}
+            prNumber={run.pr_number}
+            onDeleted={() => navigate(`/runs?project=${run.project_id}`, { replace: true })}
+            trigger={
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-red-600 border border-red-100 bg-white hover:bg-red-50 hover:border-red-200 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[14px]">delete</span>
+                {t("runDelete.trigger")}
+              </button>
+            }
+          />
         </div>
 
         {/* Meta strip */}

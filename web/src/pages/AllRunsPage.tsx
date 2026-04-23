@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { fetchProjects, fetchRuns, PAGE_SIZE, type Project, type Run } from "../lib/api";
 import { AppLayout } from "../components/AppLayout";
+import { DeleteRunDialog } from "../components/DeleteRunDialog";
 
 type RunWithProject = Run & { project: Project };
 
@@ -97,6 +98,20 @@ function RunsTable({ runs }: { runs: RunWithProject[] }) {
                     >
                       View <span className="material-symbols-outlined text-[12px]">arrow_forward</span>
                     </Link>
+                    <DeleteRunDialog
+                      runId={run.id}
+                      prNumber={run.pr_number}
+                      trigger={
+                        <button
+                          type="button"
+                          aria-label={t("runDelete.trigger")}
+                          title={t("runDelete.trigger")}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center justify-center w-6 h-6 rounded text-zinc-400 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">delete</span>
+                        </button>
+                      }
+                    />
                   </div>
                 </td>
               </tr>

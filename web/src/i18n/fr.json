@@ -185,7 +185,16 @@
   "common": {
     "loading": "Chargement…",
     "error": "Une erreur s'est produite.",
-    "back": "Retour"
+    "back": "Retour",
+    "cancel": "Annuler",
+    "delete": "Supprimer"
+  },
+  "runDelete": {
+    "trigger": "Supprimer",
+    "title": "Supprimer cette exécution ?",
+    "description": "Cela supprimera définitivement l'exécution pour la PR #{{pr}}, ainsi que tous les findings et events associés. Cette action est irréversible.",
+    "confirm": "Supprimer l'exécution",
+    "deleting": "Suppression…"
   },
   "landing": {
     "navHowItWorks": "Fonctionnement",
