@@ -28,6 +28,7 @@ GITHUB_APP_ID=$(_env_val "GITHUB_APP_ID")
 GITHUB_APP_SLUG=$(_env_val "GITHUB_APP_SLUG")
 GITHUB_WEBHOOK_SECRET=$(_env_val "GITHUB_WEBHOOK_SECRET")
 SUPABASE_SECRET_KEY=$(_env_val "SUPABASE_SECRET_KEY")
+OPENAI_API_KEY=$(_env_val "OPENAI_API_KEY")
 ANTHROPIC_API_KEY=$(_env_val "ANTHROPIC_API_KEY")
 LANGSMITH_API_KEY=$(_env_val "LANGSMITH_API_KEY")
 
@@ -63,6 +64,7 @@ _put "github_app_slug"          "$GITHUB_APP_SLUG"
 _put "github_private_key"       "$GITHUB_PRIVATE_KEY"
 _put "github_webhook_secret"    "$GITHUB_WEBHOOK_SECRET"
 _put "supabase_service_role_key" "$SUPABASE_SECRET_KEY"
+_put "openai_api_key"           "$OPENAI_API_KEY"
 _put "anthropic_api_key"        "$ANTHROPIC_API_KEY"
 _put "langsmith_api_key"        "$LANGSMITH_API_KEY"
 

@@ -9,9 +9,9 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_openai import ChatOpenAI
 
 from app.core.config import get_settings
 from app.graph.prompts import get_prompt
@@ -25,18 +25,19 @@ _MAX_TOOL_ITERATIONS = 6
 
 def _get_llm() -> BaseChatModel:
     from pydantic import SecretStr
-    primary: BaseChatModel = ChatAnthropic(  # type: ignore[call-arg]
-        model="claude-sonnet-4-5",
-        api_key=SecretStr(get_settings().anthropic_api_key),
+    settings = get_settings()
+    primary: BaseChatModel = ChatOpenAI(
+        model="gpt-4o",
+        api_key=SecretStr(settings.openai_api_key),
         max_tokens=2048,
         max_retries=5,
     )
-    openai_key = get_settings().openai_api_key
-    if openai_key:
-        from langchain_openai import ChatOpenAI
-        fallback = ChatOpenAI(
-            model="gpt-4o-mini",
-            api_key=SecretStr(openai_key),
+    anthropic_key = settings.anthropic_api_key
+    if anthropic_key:
+        from langchain_anthropic import ChatAnthropic
+        fallback = ChatAnthropic(  # type: ignore[call-arg]
+            model="claude-sonnet-4-5",
+            api_key=SecretStr(anthropic_key),
             max_tokens=2048,
         )
         return primary.with_fallbacks([fallback])
@@ -52,7 +53,7 @@ def _extract_json(text: str) -> Any:
 
 
 def planner_node(state: ReviewState) -> dict[str, Any]:
-    """Call Claude Sonnet with the planner prompt to classify the PR and list changed files.
+    """Call the LLM with the planner prompt to classify the PR and list changed files.
 
     Returns the parsed plan dict and changed_files list so specialist nodes can focus
     their reviews. On parse failure, falls back to a safe default so the run continues.
@@ -248,7 +249,7 @@ def _run_specialist(specialist_name: str, state: ReviewState) -> dict[str, Any]:
 
 
 def aggregator_node(state: ReviewState) -> dict[str, Any]:
-    """Call Claude Sonnet with the aggregator prompt to deduplicate, rank, and summarise findings.
+    """Call the LLM with the aggregator prompt to deduplicate, rank, and summarise findings.
 
     Produces the final review object with verdict, summary, and cleaned finding list.
     """

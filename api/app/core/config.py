@@ -24,10 +24,10 @@ class Settings(BaseSettings):
     # Raw PEM string injected at runtime (populated by the Secrets Manager loader in production).
     github_private_key: str | None = None
 
-    # Anthropic
-    anthropic_api_key: str
-    # OpenAI — optional, used as fallback when Anthropic returns 429
-    openai_api_key: str | None = None
+    # OpenAI (primary LLM)
+    openai_api_key: str
+    # Anthropic — optional, used as fallback when OpenAI returns 429
+    anthropic_api_key: str | None = None
 
     # LangSmith
     langsmith_api_key: str

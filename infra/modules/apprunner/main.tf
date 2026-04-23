@@ -110,7 +110,7 @@ resource "aws_apprunner_service" "api" {
           GITHUB_APP_ID         = var.secret_arns["GITHUB_APP_ID"]
           GITHUB_APP_SLUG       = var.secret_arns["GITHUB_APP_SLUG"]
           GITHUB_WEBHOOK_SECRET = var.secret_arns["GITHUB_WEBHOOK_SECRET"]
-          ANTHROPIC_API_KEY     = var.secret_arns["ANTHROPIC_API_KEY"]
+          OPENAI_API_KEY        = var.secret_arns["OPENAI_API_KEY"]
           LANGSMITH_API_KEY     = var.secret_arns["LANGSMITH_API_KEY"]
         }
       }

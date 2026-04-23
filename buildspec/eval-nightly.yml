@@ -6,7 +6,7 @@ version: 0.2
 
 env:
   secrets-manager:
-    ANTHROPIC_API_KEY: code-review-prod/anthropic_api_key
+    OPENAI_API_KEY: code-review-prod/openai_api_key
     LANGSMITH_API_KEY: code-review-prod/langsmith_api_key
     SUPABASE_SECRET_KEY: code-review-prod/supabase_service_role_key
     GITHUB_APP_ID: code-review-prod/github_app_id

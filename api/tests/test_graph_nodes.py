@@ -1,6 +1,6 @@
 """Tests for planner_node, _run_specialist, and aggregator_node.
 
-All LLM calls are replaced with FakeListChatModel so no real Anthropic API calls are made.
+All LLM calls are replaced with FakeListChatModel so no real LLM API calls are made.
 GitHub tools are patched at the boundary to return canned strings.
 """
 
@@ -110,7 +110,7 @@ def _specialist_state() -> ReviewState:
 
 
 def _fake_llm_with_tools(responses: list[str]) -> MagicMock:
-    """Return a mock that acts like ChatAnthropic(...).bind_tools(...), returning fake responses."""
+    """Return a mock that acts like ChatOpenAI(...).bind_tools(...), returning fake responses."""
     fake_llm = FakeListChatModel(responses=responses)
     mock = MagicMock()
     mock.bind_tools.return_value = fake_llm

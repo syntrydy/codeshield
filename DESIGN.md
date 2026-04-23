@@ -122,7 +122,7 @@ The v1 permission model is deliberately simple: the user who installs the App is
 
 **FastAPI API service (Python 3.12 on AWS App Runner).** Handles user-facing HTTP routes. Verifies Supabase JWTs on every request. Creates runs, exposes project CRUD, handles the GitHub App installation callback. Does *not* execute the LLM pipeline — it dispatches work to SQS and returns fast.
 
-**AWS Lambda worker (Python 3.12, container image).** Triggered by SQS. Runs the LangGraph review pipeline. Writes to Supabase with the service-role client. Posts Check Runs to GitHub. The only component that talks to Anthropic. Maximum 15-minute execution time; our internal timeout is 10 minutes.
+**AWS Lambda worker (Python 3.12, container image).** Triggered by SQS. Runs the LangGraph review pipeline. Writes to Supabase with the service-role client. Posts Check Runs to GitHub. The only component that talks to the LLM provider (OpenAI primary, Anthropic optional fallback). Maximum 15-minute execution time; our internal timeout is 10 minutes.
 
 **FastAPI webhook endpoint (same App Runner service as API, separate route namespace).** Receives GitHub webhooks. Verifies HMAC signatures. Does not require user JWT. Sends messages to SQS. Lives at `/webhooks/github`.
 
@@ -132,7 +132,7 @@ The v1 permission model is deliberately simple: the user who installs the App is
 
 **S3.** Two buckets: `artifacts` (PR diffs keyed by commit SHA, generated reports, 7-day lifecycle policy) and `terraform-state` (remote state with DynamoDB lock).
 
-**AWS Secrets Manager.** The GitHub App private key (`.pem`), webhook shared secret, Supabase service-role key, Anthropic key, LangSmith key. Injected into App Runner via the instance IAM role; Lambda reads them on cold start via `_bootstrap_secrets()`.
+**AWS Secrets Manager.** The GitHub App private key (`.pem`), webhook shared secret, Supabase service-role key, OpenAI key (and optional Anthropic fallback key), LangSmith key. Injected into App Runner via the instance IAM role; Lambda reads them on cold start via `_bootstrap_secrets()`.
 
 **LangSmith (SaaS).** Traces, prompt Hub, eval dataset and runs.
 
@@ -407,7 +407,7 @@ START → planner → fan-out(specialists) → aggregator → END
 - `changed_files`: full list
 - A `Send` object per enabled specialist (minus skipped ones).
 
-**Model:** Claude Sonnet. This is the classification and planning step — worth the better model. Budget: 8K input tokens, 1K output tokens.
+**Model:** OpenAI `gpt-4o` (Anthropic Claude Sonnet 4.5 as optional fallback). This is the classification and planning step — worth the better model. Budget: 8K input tokens, 1K output tokens.
 
 **Skipping logic:** docs-only PRs skip Security and Performance. Dependency-bump PRs skip Style. Configuration-only PRs skip Correctness. These heuristics save 60%+ of cost on common PR types and must be explicit in the planner's system prompt.
 
@@ -426,10 +426,10 @@ Each specialist is a ReAct-style loop: reason about the PR → call a tool → r
 
 | Specialist | Focus | Extra tool(s) | Model |
 |---|---|---|---|
-| Security | auth/authz, secrets, injection, deserialization, crypto, input validation | — | Sonnet |
-| Correctness | logic errors, edge cases, error handling, race conditions, off-by-one | — | Sonnet |
-| Performance | N+1 queries, inefficient loops, memory, async misuse, blocking I/O | — | Sonnet |
-| Style | naming, idiom, API design, documentation, consistency with repo conventions | — | Haiku (cheaper, fine for style) |
+| Security | auth/authz, secrets, injection, deserialization, crypto, input validation | — | gpt-4o |
+| Correctness | logic errors, edge cases, error handling, race conditions, off-by-one | — | gpt-4o |
+| Performance | N+1 queries, inefficient loops, memory, async misuse, blocking I/O | — | gpt-4o |
+| Style | naming, idiom, API design, documentation, consistency with repo conventions | — | gpt-4o |
 
 Each specialist emits zero or more findings conforming to the `Finding` Pydantic schema. Each finding must have `severity`, `title`, `explanation`, `confidence`, and optionally `file_path`, `line_start`, `line_end`, `suggested_fix`.
 
@@ -446,7 +446,7 @@ Each specialist emits zero or more findings conforming to the `Finding` Pydantic
 
 **Deduplication rule:** two findings are duplicates if they share (file_path, line_start, line_end) with overlap ≥50%. Keep the one with higher severity; if equal severity, keep higher confidence; if equal, keep the one from the more-specific specialist (Security > Correctness > Performance > Style when they overlap).
 
-**Model:** Sonnet. The aggregator makes judgment calls about severity and deduplication — worth the better model.
+**Model:** OpenAI `gpt-4o` (Anthropic Claude Sonnet 4.5 as optional fallback). The aggregator makes judgment calls about severity and deduplication — worth the better model.
 
 ### 6.6 Error handling inside the graph
 
@@ -787,7 +787,7 @@ Metrics we emit:
 - `webhook.received.count` (per event type)
 - `webhook.deduplicated.count`
 - `github.api.rate_limit_remaining` (sampled per installation)
-- `anthropic.rate_limit.hit.count`
+- `llm.rate_limit.hit.count`
 
 ### 12.3 Structured logging
 
@@ -832,7 +832,7 @@ For each finding produced, a judge prompt (separate from the reviewer) rates it 
 - **Usefulness** (1-5): would a maintainer find this actionable?
 - **Specificity** (1-5): does it point to a precise issue vs. vague?
 
-Judge uses Sonnet. Judge prompts are themselves versioned. Judge results are advisory, not replacing objective match metrics.
+Judge uses OpenAI `gpt-4o`. Judge prompts are themselves versioned. Judge results are advisory, not replacing objective match metrics.
 
 ### 13.4 CI integration
 
@@ -846,8 +846,8 @@ Regression gate: PRs cannot merge to `main` if they cause >5% drop in recall or 
 
 | Failure | Effect | Recovery |
 |---|---|---|
-| Anthropic rate limit hit | Semaphore blocks; caller waits | Natural — the semaphore serializes calls |
-| Anthropic 5xx | Exponential backoff, 3 retries | If still failing: specialist marked failed, run continues |
+| LLM rate limit hit (OpenAI 429) | Semaphore blocks; caller waits. If Anthropic fallback configured, request fails over | Natural — the semaphore serializes calls |
+| LLM 5xx | Exponential backoff, 3 retries | If still failing: specialist marked failed, run continues |
 | GitHub API rate limit (installation) | Back off to next hour | Reviews queued; user sees "waiting for GitHub" |
 | GitHub 5xx on Check Run post | Exponential backoff, 5 retries | If still failing: run marked completed, Check Run missing (rare, acceptable) |
 | Supabase unavailable | Worker cannot write events | Task fails; SQS DLQ retains message for manual replay |
@@ -860,12 +860,12 @@ Regression gate: PRs cannot merge to `main` if they cause >5% drop in recall or 
 
 Per-run hard cap: 10 minutes. Enforced by a deadline check inside `run_review()` (Lambda's hard limit is 15 minutes; the 10-minute internal timeout gives 5 minutes for cleanup). Beyond this, a `TimeoutError` is raised and the run is marked `failed`.
 
-Per-Anthropic-call timeout: 60 seconds. Per-GitHub-API-call timeout: 15 seconds.
+Per-LLM-call timeout: 60 seconds. Per-GitHub-API-call timeout: 15 seconds.
 
 ### 14.3 Retry policy
 
 - SQS message redelivery: up to 3 attempts (configured on the queue), with the idempotency guard in `run_review()` preventing duplicate work on retry.
-- Anthropic retries: 3, exponential with jitter, only on 429 and 5xx.
+- LLM retries: 3, exponential with jitter, only on 429 and 5xx. A 429 that exhausts retries triggers the Anthropic fallback when configured.
 - GitHub retries: 5 for Check Run posts, 3 for other operations.
 - Webhook processing: no retry — GitHub retries on non-2xx.
 
@@ -878,7 +878,8 @@ All secrets in AWS Secrets Manager, read via IAM instance role (App Runner) or e
 Secrets:
 - `github/app_id`, `github/private_key`, `github/webhook_secret`
 - `supabase/service_role_key`, `supabase/jwt_secret`
-- `anthropic/api_key`
+- `openai/api_key` (primary)
+- `anthropic/api_key` (optional fallback)
 - `langsmith/api_key`
 
 Local dev uses a `.env` file that is gitignored; developers have their own non-production secrets.
@@ -923,7 +924,7 @@ Soft target (tuned via evals): 80,000 input, 10,000 output. Most reviews come in
 
 ### 16.2 Per-user per-month budget
 
-Postponed to v2. In v1 we trust that Anthropic tier limits act as a backstop and that a single portfolio project doesn't attract abuse.
+Postponed to v2. In v1 we trust that OpenAI tier limits act as a backstop and that a single portfolio project doesn't attract abuse.
 
 ### 16.3 Cost attribution
 
@@ -931,7 +932,7 @@ Every run row has `total_cost_usd`. Aggregates visible in dashboard per project.
 
 ### 16.4 Model choice as cost lever
 
-Specialists use Sonnet except Style (Haiku). The Style specialist is 80% cheaper and produces comparable quality on style concerns. If costs become a problem, Correctness could be moved to Haiku for small PRs.
+All specialists currently use OpenAI `gpt-4o` (primary) with Anthropic Claude Sonnet 4.5 as optional 429-fallback. If costs become a problem, Style — and Correctness for small PRs — are the easiest specialists to downshift to `gpt-4o-mini`.
 
 ## 17. Deployment topology
 
@@ -1022,7 +1023,7 @@ Runs `terraform plan` on PRs (comments on PR), `terraform apply` on main.
 
 ### 19.1 Unit tests
 
-- **Python:** pytest with `FakeListChatModel` replacing `ChatAnthropic`, mocked Supabase service client, mocked GitHub httpx client.
+- **Python:** pytest with `FakeListChatModel` replacing `ChatOpenAI`, mocked Supabase service client, mocked GitHub httpx client.
 - **TypeScript:** Vitest for utility functions. Components tested via integration — no component-level unit tests (low ROI for a portfolio project).
 
 Every graph node has a unit test: input state → expected output state, with LLM responses stubbed.
@@ -1060,7 +1061,7 @@ The scaffolding is finished when:
 - **Team accounts** and per-repo permissions (install is by org, but project owners are individuals)
 - **Self-hosted GitHub Enterprise** support (base URL configuration, self-signed cert handling)
 - **Cost budgets and quotas** per user per month
-- **Model router** with Anthropic + fallback providers
+- **Model router** with full multi-provider support beyond the current OpenAI-primary / Anthropic-fallback pair
 - **Branch-filter UI** (currently DB-only)
 - **French eval dataset** so we measure output quality in both languages
 - **Webhook secret rotation** UI

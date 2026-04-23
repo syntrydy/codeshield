@@ -4,17 +4,17 @@ An AI code review agent that performs automated, multi-specialist reviews on Git
 
 ## What it does
 
-A developer installs the GitHub App on a repository. Every opened or updated pull request triggers four parallel specialist agents — Security, Correctness, Performance, and Style — each backed by Anthropic Claude. Findings are aggregated and posted to GitHub as a Check Run with line-level annotations. A dashboard lets project owners view full agent traces, cost breakdowns, and historical runs across all their connected repositories.
+A developer installs the GitHub App on a repository. Every opened or updated pull request triggers four parallel specialist agents — Security, Correctness, Performance, and Style — each backed by OpenAI `gpt-4o` (with Anthropic Claude as an optional fallback). Findings are aggregated and posted to GitHub as a Check Run with line-level annotations. A dashboard lets project owners view full agent traces, cost breakdowns, and historical runs across all their connected repositories.
 
 ## Stack
 
 | Layer | Technology |
 |---|---|
-| Backend API | Python 3.12, FastAPI, LangGraph, LangChain Anthropic, Pydantic v2 |
+| Backend API | Python 3.12, FastAPI, LangGraph, LangChain OpenAI, Pydantic v2 |
 | Background worker | AWS Lambda (container image) triggered by SQS; background thread locally |
 | Frontend | React 18, TypeScript, Vite, shadcn/ui, TanStack Query, Tailwind CSS |
 | Database + auth + realtime | Supabase (Postgres + pgvector, Auth, Realtime) |
-| LLM + observability | Anthropic Claude (Sonnet + Haiku), LangSmith |
+| LLM + observability | OpenAI `gpt-4o` (primary) + Anthropic Claude Sonnet 4.5 (optional fallback), LangSmith |
 | Infrastructure | AWS App Runner (API), SQS, Lambda (worker), ElastiCache Serverless (token cache), CloudFront + S3 (frontend), ECR, Secrets Manager |
 | IaC | Terraform |
 | CI/CD | AWS CodeBuild |
@@ -32,7 +32,7 @@ For the full architecture, data model, agent design, and v2 roadmap, see [DESIGN
 - `pnpm` — `npm install -g pnpm`
 - [`supabase` CLI](https://supabase.com/docs/guides/cli)
 - A Supabase project (create at [supabase.com](https://supabase.com))
-- An Anthropic API key
+- An OpenAI API key (and optionally an Anthropic API key for fallback)
 - A LangSmith account and API key
 
 ### First-time setup

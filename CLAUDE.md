@@ -12,13 +12,13 @@ The goal is a portfolio project demonstrating production-grade AI engineering: o
 
 ## Stack (locked — do not propose alternatives)
 
-**Backend:** Python 3.12, FastAPI, LangGraph, LangChain Anthropic, Pydantic v2, `uv` for package management. Background tasks dispatched via AWS SQS and executed by a Lambda container worker (`TASK_BACKEND=local` uses a daemon thread for local dev).
+**Backend:** Python 3.12, FastAPI, LangGraph, LangChain OpenAI, Pydantic v2, `uv` for package management. Background tasks dispatched via AWS SQS and executed by a Lambda container worker (`TASK_BACKEND=local` uses a daemon thread for local dev).
 
 **Frontend:** React 18, TypeScript, Vite, shadcn/ui components (copy-in, not npm), TanStack Query, `react-hook-form` + Zod, Tailwind CSS, `react-i18next` + `i18next-browser-languagedetector` for i18n.
 
 **Data & Auth:** Supabase hosted — Postgres with pgvector, Supabase Auth (GitHub OAuth for user sign-in), Supabase Realtime for event streaming. Row-Level Security on all user-facing tables.
 
-**LLM & Observability:** Anthropic Claude only. Sonnet for reasoning, Haiku for routing/classification. LangSmith for traces, prompts (Hub), and evals. No other LLM providers, no model router.
+**LLM & Observability:** OpenAI as the primary provider (`gpt-4o` for planner/specialists/aggregator). Anthropic Claude is kept as an optional `.with_fallbacks()` fallback when `ANTHROPIC_API_KEY` is set — primarily to absorb OpenAI 429 rate-limit errors. LangSmith for traces, prompts (Hub), and evals. No other LLM providers, no model router.
 
 **Infra:** AWS — App Runner (API service, pay-per-request), SQS (review queue), Lambda (worker, pay-per-invocation), ElastiCache Serverless (installation token cache, pay-per-use), S3, Secrets Manager, ECR, CloudWatch, CloudFront + S3 (frontend). Terraform with remote state in S3 + DynamoDB lock. No VPC, no ALB, no always-on worker.
 
@@ -44,7 +44,7 @@ The goal is a portfolio project demonstrating production-grade AI engineering: o
 
 9. **Parallel fan-out uses LangGraph `Send`.** The `findings` field in state is `Annotated[list[dict], operator.add]` so reducers concatenate across branches. A non-reducer list field will silently lose findings — don't change the type.
 
-10. **Anthropic calls are rate-limited by an `asyncio.Semaphore(4)` at the client wrapper level.** Do not remove this, even "temporarily for testing."
+10. **LLM calls are rate-limited by an `asyncio.Semaphore(4)` at the client wrapper level.** Do not remove this, even "temporarily for testing."
 
 11. **All user-facing strings go through `t('key')` from `react-i18next` — no exceptions.** Supported locales are `en` (default) and `fr`. Every new key is added to BOTH `web/src/i18n/en.json` AND `web/src/i18n/fr.json` in the same commit. Missing keys on either side are a bug. Technical terms (`pull request`, `commit`, `webhook`, `Check Run`) stay in English in both files — do not translate them.
 
@@ -56,7 +56,7 @@ The goal is a portfolio project demonstrating production-grade AI engineering: o
 - **No `print()` for logging.** Use the standard `logging` module with a structured formatter. `print()` is for REPL exploration only.
 - **No silent `except Exception: pass`.** Either handle the specific exception meaningfully, emit a failure event, or re-raise.
 - **No committing `.env`, `.pem`, or anything under `secrets/`.** `.gitignore` enforces this; don't override.
-- **No OpenAI, Gemini, Mistral, or model-router packages** — with one approved exception: `langchain-openai` is permitted as a `.with_fallbacks()` fallback on the Anthropic client to handle 429 rate-limit errors. It must never be used as a primary LLM and may not be added as a dependency for any other purpose.
+- **No Gemini, Mistral, or model-router packages.** OpenAI is the primary provider (`langchain-openai`); `langchain-anthropic` is permitted only as a `.with_fallbacks()` fallback on the OpenAI client to absorb 429 rate-limit errors. No other LLM providers may be added.
 - **No `any` in TypeScript** except at library boundaries where the upstream types are broken. Annotate those with `// library-boundary: <reason>`.
 - **No SSE, no custom WebSocket server.** Supabase Realtime is the streaming layer.
 - **No hardcoded prompts in graph nodes.** Even stubs for Day 1 should pull from LangSmith Hub (seed the Hub with placeholders on Day 1).
@@ -92,7 +92,7 @@ README.md       public-facing, architecture, setup, v2 roadmap
 - **TypeScript:** strict mode on. Prefer `type` over `interface` unless extending. Zod schemas for all API IO. Component props typed inline (no separate `interface Props`).
 - **SQL:** snake_case, plural table names, `uuid` primary keys except where `bigserial` makes sense (events, webhook deliveries).
 - **Commits:** small and working. Conventional Commits format (`feat:`, `fix:`, `chore:`, `test:`, `docs:`). One logical change per commit.
-- **Tests:** pytest for backend, Vitest for frontend (if needed). Mock at the boundary — fake `ChatAnthropic`, fake Supabase client, fake GitHub API. Do not mock internal functions.
+- **Tests:** pytest for backend, Vitest for frontend (if needed). Mock at the boundary — fake `ChatOpenAI`, fake Supabase client, fake GitHub API. Do not mock internal functions.
 
 ## Verification expectations
 
@@ -187,3 +187,14 @@ Claude Code should update this section at the end of each working session with w
   - `buildspec/build-deploy.yml`: replaces ECS rolling deploy with `lambda update-function-code` + `apprunner start-deployment`.
   - `docker-compose.yml`: worker service removed (Redis kept for local token cache).
   - Suite: 74 tests passing.
+
+- **LLM provider swap (2026-04-23):** Switched primary LLM from Anthropic Claude to OpenAI `gpt-4o` (Anthropic credit exhausted). Anthropic Claude Sonnet 4.5 remains as an optional `.with_fallbacks()` fallback when `ANTHROPIC_API_KEY` is set.
+  - `api/app/graph/nodes.py`: `_get_llm()` now returns `ChatOpenAI` primary, `ChatAnthropic` fallback.
+  - `api/app/core/config.py`: `openai_api_key` is required, `anthropic_api_key` now optional.
+  - `api/pyproject.toml`: reordered — `langchain-openai` primary, `langchain-anthropic` kept for fallback. Dropped direct `anthropic` SDK dep (no direct usage in code).
+  - `api/app/worker/tasks.py`: `_estimate_cost` uses gpt-4o pricing ($2.50/M input, $10/M output).
+  - `api/app/worker/lambda_handler.py` + `infra/modules/secrets/main.tf` + `infra/modules/apprunner/main.tf` + `scripts/populate-secrets.sh` + `buildspec/eval-nightly.yml`: all now include `OPENAI_API_KEY` in the secret mapping.
+  - `.env.example` + `.env.production`: OpenAI key required, Anthropic key commented/optional. **Existing committed `.env.production` Anthropic key should be revoked.**
+  - Tests: `conftest.py` seeds `OPENAI_API_KEY`; `test_lambda_handler.py` expects OpenAI in mapping; `test_review_task.py` cost asserts updated.
+  - CLAUDE.md rules and anti-patterns updated to reflect new provider policy.
+  - Suite: 102 tests passing.

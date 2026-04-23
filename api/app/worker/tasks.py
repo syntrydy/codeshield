@@ -262,5 +262,5 @@ def run_review(
 
 
 def _estimate_cost(input_tokens: int, output_tokens: int) -> float:
-    """Rough cost estimate using Sonnet pricing ($3/M input, $15/M output)."""
-    return round(input_tokens * 3e-6 + output_tokens * 15e-6, 6)
+    """Rough cost estimate using gpt-4o pricing ($2.50/M input, $10/M output)."""
+    return round(input_tokens * 2.5e-6 + output_tokens * 10e-6, 6)

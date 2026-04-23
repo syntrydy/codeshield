@@ -528,7 +528,7 @@ function TechStack() {
         { name: "Python 3.12", note: "runtime" },
         { name: "FastAPI", note: "API" },
         { name: "LangGraph", note: "orchestration" },
-        { name: "LangChain Anthropic", note: "LLM" },
+        { name: "LangChain OpenAI", note: "LLM" },
         { name: "Pydantic v2", note: "validation" },
         { name: "uv", note: "packages" },
       ],
@@ -570,7 +570,8 @@ function TechStack() {
         { name: "CloudFront + S3", note: "CDN" },
         { name: "Terraform", note: "IaC" },
         { name: "LangSmith", note: "observability" },
-        { name: "Anthropic Claude", note: "Sonnet + Haiku" },
+        { name: "OpenAI", note: "gpt-4o (primary)" },
+        { name: "Anthropic Claude", note: "Sonnet 4.5 (fallback)" },
       ],
     },
   ];
@@ -1105,7 +1106,7 @@ function FanoutFigure() {
         ))}
       </div>
       <div className="flex items-center justify-center" style={{ marginTop: 14, position: "relative" }}>
-        <FlowNote color={ACCENT}>ReAct · ≤ 6 tool rounds · Anthropic + GitHub tools</FlowNote>
+        <FlowNote color={ACCENT}>ReAct · ≤ 6 tool rounds · OpenAI + GitHub tools</FlowNote>
       </div>
     </div>
   );
@@ -1178,7 +1179,7 @@ function FullFlowGraph() {
         <FlowNode
           icon="key"
           title="Secrets Manager"
-          sub="GitHub PEM · Anthropic · LangSmith"
+          sub="GitHub PEM · OpenAI · LangSmith"
           color={ACCENT3}
           width={320}
         />
@@ -1224,7 +1225,7 @@ function FullFlowGraph() {
         <span className="uppercase" style={{ fontSize: 10, letterSpacing: "1.5px", color: ACCENT3, fontFamily: FONT_MONO }}>
           specialists call
         </span>
-        <ExternalChip icon="psychology" label="Anthropic Claude" />
+        <ExternalChip icon="psychology" label="OpenAI gpt-4o" />
         <ExternalChip icon="code" label="GitHub REST API" />
         <ExternalChip icon="visibility" label="LangSmith traces" />
       </div>

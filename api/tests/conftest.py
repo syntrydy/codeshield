@@ -11,7 +11,7 @@ _TEST_ENV = {
     "GITHUB_APP_ID": "12345",
     "GITHUB_APP_SLUG": "test-app",
     "GITHUB_WEBHOOK_SECRET": "test-webhook-secret",
-    "ANTHROPIC_API_KEY": "test-anthropic-key",
+    "OPENAI_API_KEY": "test-openai-key",
     "LANGSMITH_API_KEY": "test-langsmith-key",
 }
 

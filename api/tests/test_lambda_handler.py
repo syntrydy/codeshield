@@ -21,6 +21,7 @@ def _run_bootstrap(prefix: str = "code-review-prod") -> None:
 
 _EXPECTED_MAPPING = {
     "SUPABASE_SECRET_KEY": "supabase_service_role_key",
+    "OPENAI_API_KEY": "openai_api_key",
     "ANTHROPIC_API_KEY": "anthropic_api_key",
     "LANGSMITH_API_KEY": "langsmith_api_key",
     "GITHUB_APP_ID": "github_app_id",
@@ -65,14 +66,14 @@ def test_bootstrap_skips_already_set_env_vars() -> None:
 
     with (
         patch("boto3.client", return_value=mock_sm),
-        patch.dict(os.environ, {"ANTHROPIC_API_KEY": "pre-existing"}, clear=False),
+        patch.dict(os.environ, {"OPENAI_API_KEY": "pre-existing"}, clear=False),
     ):
         from app.worker.lambda_handler import _bootstrap_secrets
         _bootstrap_secrets()
 
-    # get_secret_value should not have been called for ANTHROPIC_API_KEY
+    # get_secret_value should not have been called for OPENAI_API_KEY
     for call in mock_sm.get_secret_value.call_args_list:
-        assert "anthropic_api_key" not in call.kwargs.get("SecretId", ""), (
+        assert "openai_api_key" not in call.kwargs.get("SecretId", ""), (
             "Should not fetch a secret that is already set in the environment"
         )
 
