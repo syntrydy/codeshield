@@ -426,10 +426,10 @@ Each specialist is a ReAct-style loop: reason about the PR → call a tool → r
 
 | Specialist | Focus | Extra tool(s) | Model |
 |---|---|---|---|
-| Security | auth/authz, secrets, injection, deserialization, crypto, input validation | — | gpt-4o |
-| Correctness | logic errors, edge cases, error handling, race conditions, off-by-one | — | gpt-4o |
-| Performance | N+1 queries, inefficient loops, memory, async misuse, blocking I/O | — | gpt-4o |
-| Style | naming, idiom, API design, documentation, consistency with repo conventions | — | gpt-4o |
+| Security | auth/authz, secrets, injection, deserialization, crypto, input validation | — | gpt-4o-mini |
+| Correctness | logic errors, edge cases, error handling, race conditions, off-by-one | — | gpt-4o-mini |
+| Performance | N+1 queries, inefficient loops, memory, async misuse, blocking I/O | — | gpt-4o-mini |
+| Style | naming, idiom, API design, documentation, consistency with repo conventions | — | gpt-4o-mini |
 
 Each specialist emits zero or more findings conforming to the `Finding` Pydantic schema. Each finding must have `severity`, `title`, `explanation`, `confidence`, and optionally `file_path`, `line_start`, `line_end`, `suggested_fix`.
 
@@ -932,7 +932,7 @@ Every run row has `total_cost_usd`. Aggregates visible in dashboard per project.
 
 ### 16.4 Model choice as cost lever
 
-All specialists currently use OpenAI `gpt-4o` (primary) with Anthropic Claude Sonnet 4.5 as optional 429-fallback. If costs become a problem, Style — and Correctness for small PRs — are the easiest specialists to downshift to `gpt-4o-mini`.
+Planner + aggregator use `gpt-4o` for the judgment calls; the 4 specialists use `gpt-4o-mini` because they fan out in parallel and would otherwise exceed the `gpt-4o` TPM cap on Tier 1. Anthropic Claude Sonnet 4.5 is kept as an optional 429-fallback when `ANTHROPIC_API_KEY` is set.
 
 ## 17. Deployment topology
 

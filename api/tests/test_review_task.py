@@ -101,18 +101,18 @@ def test_estimate_cost_zero_tokens() -> None:
 
 
 def test_estimate_cost_input_only() -> None:
-    # 1M input tokens at $2.50/M = $2.50
-    assert abs(_estimate_cost(1_000_000, 0) - 2.5) < 1e-4
+    # 1M input tokens at blended $0.70/M (mixed gpt-4o + gpt-4o-mini) = $0.70
+    assert abs(_estimate_cost(1_000_000, 0) - 0.7) < 1e-4
 
 
 def test_estimate_cost_output_only() -> None:
-    # 1M output tokens at $10/M = $10.00
-    assert abs(_estimate_cost(0, 1_000_000) - 10.0) < 1e-4
+    # 1M output tokens at blended $2.50/M = $2.50
+    assert abs(_estimate_cost(0, 1_000_000) - 2.5) < 1e-4
 
 
 def test_estimate_cost_combined() -> None:
     cost = _estimate_cost(1_000_000, 1_000_000)
-    assert abs(cost - 12.5) < 1e-4
+    assert abs(cost - 3.2) < 1e-4
 
 
 # ── Happy path ────────────────────────────────────────────────────────────────

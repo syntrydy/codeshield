@@ -18,7 +18,7 @@ The goal is a portfolio project demonstrating production-grade AI engineering: o
 
 **Data & Auth:** Supabase hosted — Postgres with pgvector, Supabase Auth (GitHub OAuth for user sign-in), Supabase Realtime for event streaming. Row-Level Security on all user-facing tables.
 
-**LLM & Observability:** OpenAI as the primary provider (`gpt-4o` for planner/specialists/aggregator). Anthropic Claude is kept as an optional `.with_fallbacks()` fallback when `ANTHROPIC_API_KEY` is set — primarily to absorb OpenAI 429 rate-limit errors. LangSmith for traces, prompts (Hub), and evals. No other LLM providers, no model router.
+**LLM & Observability:** OpenAI as the primary provider, split by role: `gpt-4o` for planner + aggregator (judgment calls), `gpt-4o-mini` for the 4 specialists (they fan out in parallel and would otherwise blow the gpt-4o TPM cap on Tier 1). Anthropic Claude is kept as an optional `.with_fallbacks()` fallback when `ANTHROPIC_API_KEY` is set — primarily to absorb OpenAI 429 rate-limit errors. LangSmith for traces, prompts (Hub), and evals. No other LLM providers, no model router.
 
 **Infra:** AWS — App Runner (API service, pay-per-request), SQS (review queue), Lambda (worker, pay-per-invocation), ElastiCache Serverless (installation token cache, pay-per-use), S3, Secrets Manager, ECR, CloudWatch, CloudFront + S3 (frontend). Terraform with remote state in S3 + DynamoDB lock. No VPC, no ALB, no always-on worker.
 

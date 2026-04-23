@@ -262,5 +262,13 @@ def run_review(
 
 
 def _estimate_cost(input_tokens: int, output_tokens: int) -> float:
-    """Rough cost estimate using gpt-4o pricing ($2.50/M input, $10/M output)."""
-    return round(input_tokens * 2.5e-6 + output_tokens * 10e-6, 6)
+    """Rough cost estimate for the mixed-model split.
+
+    Specialists (gpt-4o-mini, $0.15/$0.60 per M tokens) run 4-way parallel
+    with ReAct tool loops, so they dominate token volume. Planner + aggregator
+    use gpt-4o ($2.50/$10 per M) on ~20% of tokens. Blended rate:
+      input  ≈ 0.8 * 0.15 + 0.2 * 2.50 = $0.62 / M
+      output ≈ 0.8 * 0.60 + 0.2 * 10.00 = $2.48 / M
+    Upper-bounded slightly to stay honest on cost UI.
+    """
+    return round(input_tokens * 0.7e-6 + output_tokens * 2.5e-6, 6)

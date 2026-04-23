@@ -23,11 +23,18 @@ logger = logging.getLogger(__name__)
 _MAX_TOOL_ITERATIONS = 6
 
 
-def _get_llm() -> BaseChatModel:
+# Model split: gpt-4o for planner + aggregator (judgment calls),
+# gpt-4o-mini for the 4 specialists (they fan out in parallel and were
+# blowing the gpt-4o TPM cap on Tier 1). See CLAUDE.md rule on LLM choice.
+_PRIMARY_MODEL = "gpt-4o"
+_SPECIALIST_MODEL = "gpt-4o-mini"
+
+
+def _get_llm(model: str = _PRIMARY_MODEL) -> BaseChatModel:
     from pydantic import SecretStr
     settings = get_settings()
     primary: BaseChatModel = ChatOpenAI(
-        model="gpt-4o",
+        model=model,
         api_key=SecretStr(settings.openai_api_key),
         max_tokens=2048,
         max_retries=5,
@@ -167,7 +174,7 @@ def _run_specialist(specialist_name: str, state: ReviewState) -> dict[str, Any]:
         locale=state["locale"],
     )
 
-    llm = _get_llm().bind_tools(ALL_TOOLS)
+    llm = _get_llm(_SPECIALIST_MODEL).bind_tools(ALL_TOOLS)
 
     messages: list[Any] = [
         SystemMessage(content=system),
