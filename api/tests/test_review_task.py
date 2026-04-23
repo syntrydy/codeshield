@@ -13,7 +13,6 @@ import pytest
 
 from app.worker.tasks import _estimate_cost, _insert_findings, run_review
 
-
 _RUN_ID = "run-00000001"
 _PROJECT_ID = "proj-00000001"
 _INSTALLATION_ID = 42

@@ -59,7 +59,7 @@ def main() -> None:
             sys.exit(1)
 
     print()
-    print(f"Done. Pull in worker with: client.pull_prompt('codeshield-<name>:production')")
+    print("Done. Pull in worker with: client.pull_prompt('codeshield-<name>:production')")
 
 
 if __name__ == "__main__":

@@ -9,10 +9,9 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
 
-from app.graph.nodes import aggregator_node, planner_node, _run_specialist
+from app.graph.nodes import _run_specialist, aggregator_node, planner_node
 from app.graph.state import ReviewState
 
 _BASE_STATE: ReviewState = {

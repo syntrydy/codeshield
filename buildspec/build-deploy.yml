@@ -19,6 +19,12 @@ version: 0.2
 # is not expanded inside that YAML section. Export it in pre_build instead.
 
 phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - npm install -g pnpm
+
   pre_build:
     commands:
       - export IMAGE_TAG=$CODEBUILD_RESOLVED_SOURCE_VERSION
@@ -34,14 +40,14 @@ phases:
 
       # ── React frontend ────────────────────────────────────────────────────────
       - echo "Building frontend..."
-      - cd web
-      - npm ci
+      - cd $CODEBUILD_SRC_DIR/web
+      - pnpm install --frozen-lockfile
       - VITE_SUPABASE_URL=$VITE_SUPABASE_URL
         VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
         VITE_API_BASE_URL=$VITE_API_BASE_URL
         VITE_GITHUB_APP_SLUG=$VITE_GITHUB_APP_SLUG
-        npm run build
-      - cd ..
+        pnpm build
+      - cd $CODEBUILD_SRC_DIR
 
   post_build:
     commands:

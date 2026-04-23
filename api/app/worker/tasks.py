@@ -9,13 +9,13 @@ import logging
 import time
 from datetime import UTC, datetime
 
-# 10 minutes — keeps Lambda well within its 15-minute hard timeout.
-_GRAPH_TIMEOUT_SECONDS = 600
-
 from app.graph.graph import compiled_graph
 from app.graph.state import ReviewState
 
 logger = logging.getLogger(__name__)
+
+# 10 minutes — keeps Lambda well within its 15-minute hard timeout.
+_GRAPH_TIMEOUT_SECONDS = 600
 
 
 def _now() -> str:

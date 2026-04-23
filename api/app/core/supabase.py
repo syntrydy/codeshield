@@ -3,14 +3,13 @@
 import copy
 import re
 from functools import lru_cache
-from typing import Optional
 
 import supabase._sync.client as _sc_mod
 from supabase import Client, SupabaseException, create_client
-from supabase._sync.client import SyncClient
 from supabase.lib.client_options import ClientOptions, SyncMemoryStorage
 
 from app.core.config import get_settings
+
 
 # supabase-py validates API keys as JWTs, but Supabase now issues non-JWT keys
 # (sb_publishable_xxx / sb_secret_xxx). Replace __init__ to accept both formats.
@@ -18,7 +17,7 @@ def _patched_init(
     self,
     supabase_url: str,
     supabase_key: str,
-    options: Optional[ClientOptions] = None,
+    options: ClientOptions | None = None,
 ) -> None:
     if not supabase_url:
         raise SupabaseException("supabase_url is required")
