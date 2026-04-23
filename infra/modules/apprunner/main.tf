@@ -110,7 +110,13 @@ resource "aws_apprunner_service" "api" {
           GITHUB_APP_ID         = var.secret_arns["GITHUB_APP_ID"]
           GITHUB_APP_SLUG       = var.secret_arns["GITHUB_APP_SLUG"]
           GITHUB_WEBHOOK_SECRET = var.secret_arns["GITHUB_WEBHOOK_SECRET"]
+          GITHUB_PRIVATE_KEY    = var.secret_arns["GITHUB_PRIVATE_KEY"]
           OPENAI_API_KEY        = var.secret_arns["OPENAI_API_KEY"]
+          # ANTHROPIC_API_KEY kept only to break the App Runner rollback cycle —
+          # removing it in the same apply as adding OPENAI/GITHUB_PRIVATE_KEY caused
+          # repeated rollbacks to the old "known good" state. Once this config is
+          # stable, it can be removed in a follow-up apply.
+          ANTHROPIC_API_KEY     = var.secret_arns["ANTHROPIC_API_KEY"]
           LANGSMITH_API_KEY     = var.secret_arns["LANGSMITH_API_KEY"]
         }
       }
