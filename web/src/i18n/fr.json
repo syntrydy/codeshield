@@ -392,8 +392,8 @@
       "subtitle": "Chaque choix technologique est justifié par une contrainte d'ingénierie concrète.",
       "langGraphTitle": "LangGraph",
       "langGraphDesc": "Graphe avec état et réducteurs Annotated pour un fan-out parallèle sûr. L'API Send dispatche les spécialistes dynamiquement. Chaque nœud est isolé — l'échec d'un spécialiste émet un événement d'échec et retourne une liste vide, maintenant le run en vie.",
-      "claudeTitle": "OpenAI gpt-4o",
-      "claudeDesc": "OpenAI gpt-4o alimente le planner, les spécialistes et l'agrégateur — l'utilisation des outils et la sortie JSON structurée sont fiables pour les boucles ReAct. Anthropic Claude Sonnet 4.5 reste disponible via .with_fallbacks() pour absorber les erreurs de rate limit 429 sans perdre un run.",
+      "llmTitle": "OpenAI gpt-4o + gpt-4o-mini",
+      "llmDesc": "gpt-4o pilote le planner et l'agrégateur (décisions de jugement) tandis que les quatre spécialistes tournent sur gpt-4o-mini — ils s'exécutent en parallèle et dépasseraient sinon le quota TPM de gpt-4o en Tier 1. Anthropic Claude Sonnet 4.5 reste disponible via .with_fallbacks() pour absorber les erreurs de rate limit 429 sans perdre un run.",
       "langSmithTitle": "LangSmith Hub",
       "langSmithDesc": "Les prompts sont versionnés dans le Hub avec des tags sémantiques. Les workers les récupèrent au démarrage et les mettent en cache en mémoire. Un fallback groupé garantit des mises à jour de prompts sans interruption de service.",
       "supabaseTitle": "Supabase",
@@ -404,14 +404,14 @@
       "lambdaDesc": "La facturation par invocation convient à la charge de travail irrégulière des revues PR. Coût nul au repos. Le déploiement en image conteneur réutilise la même image ECR qu'en développement local.",
       "sqsTitle": "AWS SQS",
       "sqsDesc": "File durable avec livraison au moins une fois, découplant le webhook (doit répondre en < 10s) du pipeline LangGraph (30–90s). Une file de lettres mortes capture les échecs pour analyse post-mortem.",
-      "redisTitle": "ElastiCache Serverless (Redis)",
-      "redisDesc": "Deux responsabilités : cache de tokens d'installation (TTL 55 min, clé par installation_id) et stockage de clés d'idempotence (TTL 24h pour X-GitHub-Delivery). Facturation serverless — coût nul en période creuse."
+      "cacheTitle": "DynamoDB (cache on-demand)",
+      "cacheDesc": "Deux responsabilités : cache de tokens d'installation (TTL 55 min, clé par installation_id) et stockage de clés d'idempotence (TTL 24h pour X-GitHub-Delivery). DynamoDB avec expiration TTL auto a remplacé ElastiCache Serverless Redis — facturation on-demand qui descend à zéro, et pas de VPC à gérer."
     },
     "infra": {
       "title": "Philosophie d'Infrastructure",
       "subtitle": "Payer à l'usage plutôt qu'en permanence. Chaque service ne facture que lorsqu'il travaille.",
       "card1Title": "Pas de Workers Permanents",
-      "card1Desc": "La conception originale utilisait Celery + Redis + ECS — trois services 24/7. Lambda a remplacé le worker, ramenant le coût inactif à 0 $.",
+      "card1Desc": "La conception originale utilisait Celery + Redis + ECS — trois services 24/7. Lambda a remplacé le worker et DynamoDB a remplacé Redis pour le cache, ramenant le coût inactif à 0 $.",
       "card2Title": "Sans Taxe VPC",
       "card2Desc": "App Runner et Lambda fonctionnent sans VPC, éliminant les coûts de passerelle NAT (~35 $/mois minimum) — le coût caché le plus important dans les déploiements AWS typiques.",
       "card3Title": "Terraform Partout",

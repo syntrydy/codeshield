@@ -318,13 +318,13 @@ export function AboutPage() {
         <div style={{ border: `1px solid ${BORDER}`, borderRadius: 8, overflow: "hidden", background: CARD }}>
           {([
             { tag: "LangGraph",               title: t("about.decisions.langGraphTitle"),  desc: t("about.decisions.langGraphDesc") },
-            { tag: "Anthropic Claude",        title: t("about.decisions.claudeTitle"),     desc: t("about.decisions.claudeDesc") },
+            { tag: "OpenAI gpt-4o",           title: t("about.decisions.llmTitle"),        desc: t("about.decisions.llmDesc") },
             { tag: "LangSmith Hub",           title: t("about.decisions.langSmithTitle"),  desc: t("about.decisions.langSmithDesc") },
             { tag: "Supabase",                title: t("about.decisions.supabaseTitle"),   desc: t("about.decisions.supabaseDesc") },
             { tag: "AWS App Runner",          title: t("about.decisions.appRunnerTitle"),  desc: t("about.decisions.appRunnerDesc") },
             { tag: "AWS Lambda",              title: t("about.decisions.lambdaTitle"),     desc: t("about.decisions.lambdaDesc") },
             { tag: "AWS SQS",                 title: t("about.decisions.sqsTitle"),        desc: t("about.decisions.sqsDesc") },
-            { tag: "ElastiCache Serverless",  title: t("about.decisions.redisTitle"),      desc: t("about.decisions.redisDesc") },
+            { tag: "DynamoDB",                title: t("about.decisions.cacheTitle"),      desc: t("about.decisions.cacheDesc") },
           ] as { tag: string; title: string; desc: string }[]).map(({ tag, title, desc }, i, arr) => (
             <div
               key={tag}
@@ -566,7 +566,7 @@ function TechStack() {
         { name: "AWS App Runner", note: "API host" },
         { name: "AWS Lambda", note: "worker" },
         { name: "AWS SQS", note: "queue" },
-        { name: "ElastiCache", note: "Redis" },
+        { name: "DynamoDB", note: "cache + idempotency" },
         { name: "CloudFront + S3", note: "CDN" },
         { name: "Terraform", note: "IaC" },
         { name: "LangSmith", note: "observability" },
@@ -1225,7 +1225,7 @@ function FullFlowGraph() {
         <span className="uppercase" style={{ fontSize: 10, letterSpacing: "1.5px", color: ACCENT3, fontFamily: FONT_MONO }}>
           specialists call
         </span>
-        <ExternalChip icon="psychology" label="OpenAI gpt-4o" />
+        <ExternalChip icon="psychology" label="OpenAI gpt-4o-mini" />
         <ExternalChip icon="code" label="GitHub REST API" />
         <ExternalChip icon="visibility" label="LangSmith traces" />
       </div>
