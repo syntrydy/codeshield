@@ -399,6 +399,91 @@ export function AboutPage() {
         </div>
       </Section>
 
+      {/* ── Evals & Quality Gates ── */}
+      <Section label={t("about.evals.title")} title={t("about.evals.subtitle")} surface>
+        <p
+          style={{
+            color: MUTED,
+            fontSize: 14,
+            lineHeight: 1.7,
+            maxWidth: 780,
+            marginTop: -24,
+            marginBottom: 48,
+          }}
+        >
+          {t("about.evals.description")}
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5" style={{ marginBottom: 32 }}>
+          <EvalLayerCard
+            num="01"
+            label={t("about.evals.layer1Label")}
+            title={t("about.evals.layer1Title")}
+            desc={t("about.evals.layer1Desc")}
+            cadence={t("about.evals.layer1Cadence")}
+            color={ACCENT}
+          />
+          <EvalLayerCard
+            num="02"
+            label={t("about.evals.layer2Label")}
+            title={t("about.evals.layer2Title")}
+            desc={t("about.evals.layer2Desc")}
+            cadence={t("about.evals.layer2Cadence")}
+            color={ACCENT2}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <MetricCard
+            label={t("about.evals.metric1Label")}
+            value={t("about.evals.metric1Value")}
+            sub={t("about.evals.metric1Sub")}
+            color={ACCENT}
+            isGate
+          />
+          <MetricCard
+            label={t("about.evals.metric2Label")}
+            value={t("about.evals.metric2Value")}
+            sub={t("about.evals.metric2Sub")}
+            color={ACCENT3}
+            isGate
+          />
+          <MetricCard
+            label={t("about.evals.metric3Label")}
+            value={t("about.evals.metric3Value")}
+            sub={t("about.evals.metric3Sub")}
+            color={ACCENT2}
+          />
+          <MetricCard
+            label={t("about.evals.metric4Label")}
+            value={t("about.evals.metric4Value")}
+            sub={t("about.evals.metric4Sub")}
+            color={ACCENT2}
+          />
+        </div>
+
+        <div
+          className="flex items-start gap-3"
+          style={{
+            marginTop: 28,
+            padding: "16px 20px",
+            borderRadius: 6,
+            background: `${ACCENT3}0a`,
+            border: `1px dashed ${ACCENT3}44`,
+          }}
+        >
+          <span
+            className="material-symbols-outlined flex-shrink-0"
+            style={{ fontSize: 18, color: ACCENT3, marginTop: 1 }}
+          >
+            block
+          </span>
+          <p style={{ fontSize: 12, color: MUTED, lineHeight: 1.7 }}>
+            {t("about.evals.gateNote")}
+          </p>
+        </div>
+      </Section>
+
       {/* ── Footer ── */}
       <footer
         className="flex items-center justify-between flex-wrap gap-4"
@@ -883,6 +968,155 @@ function SpecialistCard({
           ))}
         </ul>
       </div>
+    </div>
+  );
+}
+
+function EvalLayerCard({
+  num,
+  label,
+  title,
+  desc,
+  cadence,
+  color,
+}: {
+  num: string;
+  label: string;
+  title: string;
+  desc: string;
+  cadence: string;
+  color: string;
+}) {
+  return (
+    <div
+      className="cs-card"
+      style={{
+        background: CARD,
+        border: `1px solid ${BORDER}`,
+        borderRadius: 8,
+        padding: 28,
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ height: 2, background: `linear-gradient(90deg, ${color}, ${color}00)`, position: "absolute", top: 0, left: 0, right: 0 }} />
+      <div className="flex items-center justify-between" style={{ marginBottom: 18 }}>
+        <span
+          className="uppercase"
+          style={{
+            fontSize: 10,
+            letterSpacing: "2px",
+            color,
+            background: `${color}10`,
+            border: `1px solid ${color}33`,
+            borderRadius: 3,
+            padding: "4px 10px",
+            fontFamily: FONT_MONO,
+          }}
+        >
+          {label}
+        </span>
+        <span
+          style={{
+            fontFamily: FONT_DISPLAY,
+            fontSize: 32,
+            fontWeight: 800,
+            color: BORDER,
+            lineHeight: 1,
+            letterSpacing: "-1.5px",
+          }}
+        >
+          {num}
+        </span>
+      </div>
+      <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 17, fontWeight: 700, color: TEXT, marginBottom: 12 }}>
+        {title}
+      </h3>
+      <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.7, marginBottom: 18 }}>
+        {desc}
+      </p>
+      <div
+        className="flex items-center gap-2"
+        style={{
+          paddingTop: 14,
+          borderTop: `1px solid ${BORDER_DIM}`,
+          fontSize: 11,
+          color: MUTED,
+          fontFamily: FONT_MONO,
+        }}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 14, color }}>
+          schedule
+        </span>
+        <span>{cadence}</span>
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  sub,
+  color,
+  isGate = false,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  color: string;
+  isGate?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        background: CARD,
+        border: `1px solid ${BORDER}`,
+        borderRadius: 8,
+        padding: 22,
+        position: "relative",
+      }}
+    >
+      {isGate && (
+        <span
+          className="uppercase"
+          style={{
+            position: "absolute",
+            top: 10,
+            right: 10,
+            fontSize: 9,
+            letterSpacing: "1.5px",
+            color,
+            background: `${color}10`,
+            border: `1px solid ${color}33`,
+            borderRadius: 3,
+            padding: "2px 6px",
+            fontFamily: FONT_MONO,
+          }}
+        >
+          gate
+        </span>
+      )}
+      <div
+        className="uppercase"
+        style={{ fontSize: 10, letterSpacing: "1.5px", color: MUTED, marginBottom: 10 }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontFamily: FONT_DISPLAY,
+          fontSize: 28,
+          fontWeight: 800,
+          color,
+          lineHeight: 1,
+          letterSpacing: "-1px",
+          marginBottom: 12,
+        }}
+      >
+        {value}
+      </div>
+      <p style={{ fontSize: 11, color: MUTED, lineHeight: 1.6 }}>{sub}</p>
     </div>
   );
 }
