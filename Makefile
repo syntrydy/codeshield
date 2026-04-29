@@ -80,9 +80,11 @@ frontend-deploy:
 db-push:
 	supabase db push
 
-# Reset the local/hosted DB and re-run all migrations (destructive — dev only)
+# Reset the LINKED hosted DB (drops schema, re-runs all migrations,
+# WIPES auth.users). The CLI prompts for a typed 'y' before proceeding.
+# Run 'supabase link --project-ref <ref>' once if not already linked.
 db-reset:
-	supabase db reset
+	supabase db reset --linked
 
 # ── Infrastructure ────────────────────────────────────────────────────────────
 

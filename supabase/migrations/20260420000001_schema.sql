@@ -158,7 +158,8 @@ create table public.webhook_deliveries (
   received_at    timestamptz not null default now()
 );
 
--- No RLS — service_role only; no user-facing queries.
+-- RLS enabled with zero policies in 20260429000000_webhook_deliveries_rls.sql:
+-- denies anon + authenticated; service_role bypasses RLS and retains access.
 
 -- ============================================================
 -- user_preferences
